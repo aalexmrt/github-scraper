@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app # Mount the code directory
+      - /app/node_modules # Exclude node_modules from the host
+      - repo_volume:/data/repos
+    command: npm run dev # Use nodemon for development
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15 # Specify an exact version of PostgreSQL
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: github_scraper
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  repo_volume:
+  pg_data:
