@@ -1,5 +1,9 @@
 import fastify from 'fastify';
+import dotenv from 'dotenv';
+import prisma from './utils/prisma';
 import { processRepository, generateLeaderboard } from './services/repoService';
+
+dotenv.config();
 
 const app = fastify();
 
@@ -18,6 +22,11 @@ app.get('/leaderboard', async (request, reply) => {
   } catch (error:any) {
     reply.status(500).send({ error: error.message });
   }
+});
+
+// Hook to disconnect Prisma when the server shuts down
+app.addHook('onClose', async () => {
+  await prisma.$disconnect();
 });
 
 // Start the server

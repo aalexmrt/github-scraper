@@ -2,6 +2,7 @@ import simpleGit from 'simple-git';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import prisma from '../utils/prisma';
 
 const REPO_BASE_PATH = '/data/repos';
 
@@ -35,12 +36,17 @@ export const processRepository = async (repoUrl: string): Promise<string> => {
 };
 
 
+interface UserInfo {
+  identifier: string;
+  username: string | null;
+  profileUrl: string | null;
+}
 
 // Function to resolve user information based on email
 async function resolveUserInfo(
   email: string, // Email of the contributor
   authorName: string, // Author name as fallback if no email
-  emailCache: Map<string, { identifier: string, username: string, profileUrl: string }>
+  emailCache: Map<string, { identifier: string, username: string | null, profileUrl: string | null }>
   // Cache to store and retrieve previously fetched user information
 ) {
   // If there is no email provided, use author name as the identifier
@@ -65,14 +71,40 @@ async function resolveUserInfo(
 
   // If not cached, fetch user information from GitHub API
   try {
-      const response = await axios.get(`https://api.github.com/search/users?q=${email}+in:email`);
+      // Search in our database for the user
+      console.log(email);
+      const dbUser = await prisma.contributor.findUnique({
+        where: { email }
+      });
+  
+      if (dbUser) {
+        const userInfo = { identifier: dbUser.identifier, username: dbUser.username, profileUrl: dbUser.profileUrl };
+        emailCache.set(email, userInfo);
+        return userInfo;
+      }
+  
+      console.log("We are doing an API call");
+      const response = await axios.get(`https://api.github.com/search/users?q=${email}+in:email`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
+        }
+      });
       // Check if the API call returned any users
       if (response.data.items.length > 0) {
           const { login, html_url } = response.data.items[0];
           // Construct user info from API response
-          const userInfo = { identifier: login, username: login, profileUrl: html_url };
+          const userInfo: UserInfo = { identifier: login, username: login, profileUrl: html_url };
           // Cache this user info for future reference
           emailCache.set(email, userInfo);
+          // Set the user in the database
+          await prisma.contributor.create({
+            data: {
+              identifier: login,
+              username: login,
+              email: email,
+              profileUrl: html_url
+            }
+          });
           return userInfo;
       }
   } catch (error) {
@@ -81,7 +113,14 @@ async function resolveUserInfo(
   }
 
   // If user info can't be resolved, return a fallback with the email as the identifier
-  const fallbackInfo = { identifier: email, username: 'Unknown Username', profileUrl: 'Unknown Profile' };
+  const fallbackInfo: UserInfo = { identifier: email, username: 'Unknown Username', profileUrl: 'Unknown Profile' };
+  // Set the fallback info in the database, this way no unnecessary API calls will be made
+  await prisma.contributor.create({
+    data: {
+      identifier: email,
+      email: email,
+    }
+  });
   // Cache the fallback info as well
   emailCache.set(email, fallbackInfo);
   return fallbackInfo;
@@ -106,6 +145,10 @@ export const generateLeaderboard = async (repoUrl: string) => {
 
       // Process each commit in the log
       for (const { author_email, author_name } of log.all) {
+          // Let's skip commits without an email or name
+          if (!author_email || !author_name) {
+            continue;
+          }
           // Resolve user information based on email and name, using the cache
           const { identifier, username, profileUrl } = await resolveUserInfo(author_email, author_name, emailCache);
           // Check if the contributor already exists in the leaderboard
