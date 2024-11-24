@@ -2,7 +2,7 @@ import fastify from 'fastify';
 import dotenv from 'dotenv';
 import prisma from './utils/prisma';
 import { processRepository, generateLeaderboard } from './services/repoService';
-
+import { repoQueue } from './services/queueService';
 dotenv.config();
 
 const app = fastify();
@@ -14,15 +14,34 @@ app.get('/leaderboard', async (request, reply) => {
     return reply.status(400).send({ error: 'repoUrl query parameter is required' });
   }
 
-  try {
-    const message = await processRepository(repoUrl);
-    const leaderboard = await generateLeaderboard(repoUrl);
-    reply.send({  leaderboard });
-    reply.send({ message });
-  } catch (error:any) {
-    reply.status(500).send({ error: error.message });
+  // Check if a job is already in progress
+  const jobs = await repoQueue.getJobs(['waiting', 'active']);
+  const existingJob = jobs.find((job) => job.data.repoUrl === repoUrl);
+
+  if (existingJob) {
+    return reply.status(202).send({ message: 'Repository is being processed.' });
   }
+
+  // Check if the job is completed
+  const completedJobs = await repoQueue.getJobs(['completed']);
+  const completedJob = completedJobs.find((job) => job.data.repoUrl === repoUrl);
+
+  if (completedJob) {
+    return reply.status(200).send({
+      message: 'Repository already processed.',
+      leaderboard: completedJob.returnvalue, // Fetch result
+    });
+  }
+
+    // Add a new job for processing
+    await repoQueue.add({ repoUrl });
+    return reply.status(202).send({ message: 'Repository is being processed.' });
+
+
+     
 });
+
+
 
 // Hook to disconnect Prisma when the server shuts down
 app.addHook('onClose', async () => {
