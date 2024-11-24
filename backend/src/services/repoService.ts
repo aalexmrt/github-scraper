@@ -12,14 +12,13 @@ if (!fs.existsSync(REPO_BASE_PATH)) {
   fs.mkdirSync(REPO_BASE_PATH, { recursive: true });
 }
 
-// Utility to validate GitHub repository URLs
 export const isValidGitHubUrl = (url: string): boolean => {
-  const regex = /^(https:\/\/|git@)github\.com[:\/][\w-]+\/[\w-]+(\.git)?$/i;
-  // Examples of URLs this regex will match:
-  // - HTTPS: "https://github.com/username/repository"
-  // - HTTPS with .git: "https://github.com/username/repository.git"
-  // - SSH: "git@github.com:username/repository"
-  // - SSH with .git: "git@github.com:username/repository.git"
+  console.log(url);
+  const regex = /^(https:\/\/|git@)github\.com[:\/][\w-]+\/[\w-]+(\.git)?\/?$/i;
+  // This regex now accounts for:
+  // - HTTPS with or without a trailing slash
+  // - HTTPS with .git
+  // - SSH URLs
   return regex.test(url);
 };
 

@@ -77,6 +77,60 @@ Ensure the following tools are installed on your machine:
 
 ## Usage
 
+### 0. Accessing the `/leaderboard` Endpoint
+
+You can use the `/leaderboard` endpoint to process a GitHub repository and retrieve the leaderboard of contributors.
+
+#### Endpoint Details
+- **Method**: `GET`
+- **URL**: `http://localhost:3000/leaderboard`
+
+#### Query Parameters
+| Parameter | Type   | Description                         | Required |
+|-----------|--------|-------------------------------------|----------|
+| `repoUrl` | string | The URL of the GitHub repository.  | Yes      |
+
+#### Example Request
+Using `curl`:
+```bash
+curl -X GET "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
+```
+
+#### Example Responses
+##### Processing in Progress
+```json
+{
+  "message": "Repository is being processed."
+}
+```
+
+##### Processing Completed
+```json
+{
+    "leaderboard": [
+        {
+            "commitCount": 43,
+            "username": null,
+            "email": "alexmartinez.mm98@gmail.com",
+            "profileUrl": null
+        },
+        {
+            "commitCount": 2,
+            "username": "aalexmrt",
+            "email": "67644735+aalexmrt@users.noreply.github.com",
+            "profileUrl": "https://github.com/aalexmrt"
+        }
+    ]
+}
+```
+
+##### Error
+```json
+{
+  "error": "Failed to process the leaderboard request."
+}
+```
+
 ### 1. Add a Repository
 - Open the application frontend at `http://localhost:4000`.
 - Use the **Add Repository** form to submit a GitHub repository URL for processing.
@@ -92,4 +146,3 @@ Ensure the following tools are installed on your machine:
 
 ---
 
-Let me know if you'd like further refinements or additional sections! 🚀
