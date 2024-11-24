@@ -155,3 +155,7 @@ The application frontend provides an interface to interact with the backend, mak
 
 3. **View Contributor Leaderboard**  
    - For completed repositories, click the **Leaderboard** button to view a detailed contributor leaderboard.
+
+<img width="1728" alt="Screenshot 2024-11-24 at 5 17 49 PM" src="https://github.com/user-attachments/assets/97ac4397-2556-44c5-89df-011133f6b455">
+<img width="1728" alt="Screenshot 2024-11-24 at 5 18 03 PM" src="https://github.com/user-attachments/assets/200d80e1-59ed-4821-8a60-9a0f8807096f">
+
