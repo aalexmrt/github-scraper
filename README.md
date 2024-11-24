@@ -77,7 +77,7 @@ Ensure the following tools are installed on your machine:
 
 ## Usage
 
-### 0. Accessing the `/leaderboard` Endpoint
+### Backend: Accessing the `/leaderboard` Endpoint
 
 You can use the `/leaderboard` endpoint to process a GitHub repository and retrieve the leaderboard of contributors.
 
@@ -131,18 +131,19 @@ curl -X GET "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexm
 }
 ```
 
-### 1. Add a Repository
-- Open the application frontend at `http://localhost:4000`.
-- Use the **Add Repository** form to submit a GitHub repository URL for processing.
+### Frontend: Using the Application
 
-### 2. Monitor Repository Processing
-- Navigate to the **Processed Repositories** section to view the status of your repositories:
-  - **Processing**: The repository is currently being analyzed.
-  - **On Queue**: The repository is waiting for processing.
-  - **Completed**: The repository has been successfully processed.
+The application frontend provides an interface to interact with the backend, making it easier to process repositories and view leaderboards.
 
-### 3. View Contributor Leaderboard
-- Click on the **Leaderboard** button for a completed repository to view a detailed contributor leaderboard.
+1. **Add a Repository**  
+   - Open the application frontend at `http://localhost:4000`.  
+   - Use the **Add Repository** form to submit a GitHub repository URL for processing.
 
----
+2. **Monitor Repository Processing**  
+   - Navigate to the **Processed Repositories** section to view the status of your repositories:  
+     - **Processing**: The repository is currently being analyzed.  
+     - **On Queue**: The repository is waiting for processing.  
+     - **Completed**: The repository has been successfully processed.  
 
+3. **View Contributor Leaderboard**  
+   - For completed repositories, click the **Leaderboard** button to view a detailed contributor leaderboard.
