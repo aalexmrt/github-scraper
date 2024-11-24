@@ -149,7 +149,7 @@ export function RepositoryJobsTable() {
                   </TableCell>
                   <TableCell>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => handleRepoClick(job.repoUrl)}
                       disabled={job.status !== 'completed'}

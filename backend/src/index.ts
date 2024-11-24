@@ -1,7 +1,6 @@
 import fastify from 'fastify';
 import dotenv from 'dotenv';
 import prisma from './utils/prisma';
-import { processRepository, generateLeaderboard } from './services/repoService';
 import { repoQueue } from './services/queueService';
 dotenv.config();
 
@@ -16,31 +15,37 @@ app.get('/leaderboard', async (request, reply) => {
       .send({ error: 'repoUrl query parameter is required' });
   }
 
-  // Check if a job is already in progress
-  const jobs = await repoQueue.getJobs(['waiting', 'active']);
-  const existingJob = jobs.find((job) => job.data.repoUrl === repoUrl);
+  try {
+    // Check if a job is already in progress
+    const activeJob = await repoQueue.getJob(repoUrl);
+    if (activeJob) {
+      const state = await activeJob.getState();
+      if (state === 'waiting' || state === 'active') {
+        return reply
+          .status(202)
+          .send({ message: 'Repository is being processed.' });
+      }
+    }
 
-  if (existingJob) {
+    // Check if the job is completed
+    const completedJob = await repoQueue.getJob(repoUrl);
+    if (completedJob && (await completedJob.getState()) === 'completed') {
+      return reply.status(200).send({
+        leaderboard: completedJob.returnvalue, // Fetch result
+      });
+    }
+
+    // Add a new job for processing
+    await repoQueue.add(repoUrl, { jobId: repoUrl });
     return reply
       .status(202)
       .send({ message: 'Repository is being processed.' });
+  } catch (error) {
+    console.error('Error in /leaderboard:', error);
+    return reply
+      .status(500)
+      .send({ error: 'Failed to process the leaderboard request.' });
   }
-
-  // Check if the job is completed
-  const completedJobs = await repoQueue.getJobs(['completed']);
-  const completedJob = completedJobs.find(
-    (job) => job.data.repoUrl === repoUrl
-  );
-
-  if (completedJob) {
-    return reply.status(200).send({
-      leaderboard: completedJob.returnvalue, // Fetch result
-    });
-  }
-
-  // Add a new job for processing
-  await repoQueue.add({ repoUrl });
-  return reply.status(202).send({ message: 'Repository is being processed.' });
 });
 
 app.get('/repositories/jobs', async (req, reply) => {
@@ -58,7 +63,6 @@ app.get('/repositories/jobs', async (req, reply) => {
         status: await job.getState(),
       }))
     );
-
 
     await reply.send(jobs);
   } catch (error) {
