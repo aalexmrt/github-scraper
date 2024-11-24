@@ -8,7 +8,7 @@ services:
       - ./backend:/app # Mount the code directory
       - /app/node_modules # Exclude node_modules from the host
       - repo_volume:/data/repos
-    command: sh -c "npx prisma generate && npm run dev"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
     environment:
       - NODE_ENV=development
       - REDIS_HOST=redis
@@ -51,7 +51,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-    command: sh -c "npx prisma generate && npm run dev:worker"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev:worker"
     environment:
       - NODE_ENV=development
       - REDIS_HOST=redis
