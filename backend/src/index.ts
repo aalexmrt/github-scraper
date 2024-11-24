@@ -6,6 +6,10 @@ dotenv.config();
 
 const app = fastify();
 
+app.get('/health', async (request, reply) => {
+  return reply.status(200).send({ message: 'Server is running.' });
+});
+
 app.get('/leaderboard', async (request, reply) => {
   const { repoUrl } = request.query as { repoUrl?: string };
 
