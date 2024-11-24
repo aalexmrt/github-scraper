@@ -28,7 +28,6 @@ app.get('/leaderboard', async (request, reply) => {
 
   if (completedJob) {
     return reply.status(200).send({
-      message: 'Repository already processed.',
       leaderboard: completedJob.returnvalue, // Fetch result
     });
   }

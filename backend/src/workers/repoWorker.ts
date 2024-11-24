@@ -10,7 +10,7 @@ repoQueue.process(async (job) => {
     const message = await processRepository(repoUrl);
     const leaderboard = await generateLeaderboard(repoUrl);
     console.log(`Repository processed: ${message}`);
-    return { status: 'success', leaderboard };
+    return leaderboard;
   } catch (error: any) {
     console.error(`Failed to process repository ${repoUrl}: ${error.message}`);
     throw error; // Ensures the job is marked as failed
