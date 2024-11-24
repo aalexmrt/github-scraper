@@ -30,8 +30,8 @@ Ensure the following tools are installed on your machine:
 
 1. **Clone the Repository**:
    ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+   git clone https://github.com/aalexmrt/github-scraper
+   cd github-scraper
 2. **Set Up Environment Variables**:
    - A sample `.env.example` file is provided in the `backend` folder. You can copy this file to create your `.env` file.
      ```bash
