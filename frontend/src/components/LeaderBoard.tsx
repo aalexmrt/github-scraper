@@ -3,10 +3,6 @@
 import React from 'react';
 import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
-import { UserCircle2, Trophy } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -17,6 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Trophy, GitCommit, User } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 interface Contributor {
   commitCount: number;
@@ -25,21 +25,27 @@ interface Contributor {
   profileUrl: string;
 }
 
-const fetchLeaderboard = async (): Promise<Contributor[]> => {
+const fetchLeaderboard = async (repoUrl: string): Promise<Contributor[]> => {
   const response = await axios.get('/api/leaderboard', {
-    params: { repoUrl: 'https://github.com/midudev/landing-infojobs' },
+    params: { repoUrl },
   });
   return response.data.leaderboard;
 };
 
-export const Leaderboard: React.FC = () => {
+export function LeaderBoard({
+  repoUrl,
+  onBack,
+}: {
+  repoUrl: string;
+  onBack: () => void;
+}) {
   const {
     data: contributors,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['leaderboard'],
-    queryFn: fetchLeaderboard,
+    queryKey: ['leaderboard', repoUrl],
+    queryFn: () => fetchLeaderboard(repoUrl),
   });
 
   if (isLoading) {
@@ -47,7 +53,7 @@ export const Leaderboard: React.FC = () => {
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            GitHub Contributors Leaderboard
+            Loading Leaderboard
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -63,8 +69,13 @@ export const Leaderboard: React.FC = () => {
   if (isError) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
-        <CardContent className="flex items-center justify-center p-6">
-          <p className="text-red-500 text-lg">Error</p>
+        <CardContent className="flex flex-col items-center justify-center p-6">
+          <p className="text-red-500 text-lg mb-4">
+            Error loading leaderboard.
+          </p>
+          <Button onClick={onBack} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jobs
+          </Button>
         </CardContent>
       </Card>
     );
@@ -72,9 +83,12 @@ export const Leaderboard: React.FC = () => {
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">
-          GitHub Contributors Leaderboard
+      <CardHeader className="flex flex-row items-center justify-between">
+        <Button onClick={onBack} variant="ghost" className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jobs
+        </Button>
+        <CardTitle className="text-2xl font-bold">
+          Contributor Leaderboard
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -82,57 +96,53 @@ export const Leaderboard: React.FC = () => {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[100px]">Rank</TableHead>
-              <TableHead>Username</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead>Commits</TableHead>
-              <TableHead className="text-right">Profile</TableHead>
+              <TableHead>Contributor</TableHead>
+              <TableHead className="text-right">Commits</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {contributors?.map((contributor, index) => (
-              <TableRow key={index} className="hover:bg-muted/50">
+              <TableRow
+                key={index}
+                className="hover:bg-muted/50 transition-colors"
+              >
                 <TableCell className="font-medium">
-                  {index === 0 ? (
-                    <Badge
-                      variant="default"
-                      className="bg-yellow-500 text-primary-foreground"
-                    >
-                      <Trophy className="w-4 h-4 mr-1" />
-                      {index + 1}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">{index + 1}</Badge>
+                  {index === 0 && (
+                    <Trophy className="inline-block mr-2 text-yellow-500" />
                   )}
+                  {index === 1 && (
+                    <Trophy className="inline-block mr-2 text-gray-400" />
+                  )}
+                  {index === 2 && (
+                    <Trophy className="inline-block mr-2 text-amber-600" />
+                  )}
+                  {index + 1}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Avatar className="w-8 h-8">
+                  <div className="flex items-center space-x-4">
+                    <Avatar>
                       <AvatarImage
                         src={`https://github.com/${contributor.username}.png`}
-                        alt={contributor.username}
                       />
                       <AvatarFallback>
-                        <UserCircle2 className="w-4 h-4" />
+                        {contributor.username?.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span>{contributor.username || 'Unknown'}</span>
+                    <div>
+                      <div className="font-semibold">
+                        {contributor.username || 'Unknown'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {contributor.email}
+                      </div>
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {contributor.email}
-                </TableCell>
-                <TableCell>{contributor.commitCount}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={contributor.profileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {/* <Github className="w-4 h-4 mr-2" /> */}
-                      View
-                    </a>
-                  </Button>
+                  <Badge variant="secondary" className="font-mono">
+                    <GitCommit className="inline-block mr-1 h-3 w-3" />
+                    {contributor.commitCount}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
@@ -141,4 +151,4 @@ export const Leaderboard: React.FC = () => {
       </CardContent>
     </Card>
   );
-};
+}

@@ -11,7 +11,9 @@ app.get('/leaderboard', async (request, reply) => {
   const { repoUrl } = request.query as { repoUrl?: string };
 
   if (!repoUrl) {
-    return reply.status(400).send({ error: 'repoUrl query parameter is required' });
+    return reply
+      .status(400)
+      .send({ error: 'repoUrl query parameter is required' });
   }
 
   // Check if a job is already in progress
@@ -19,12 +21,16 @@ app.get('/leaderboard', async (request, reply) => {
   const existingJob = jobs.find((job) => job.data.repoUrl === repoUrl);
 
   if (existingJob) {
-    return reply.status(202).send({ message: 'Repository is being processed.' });
+    return reply
+      .status(202)
+      .send({ message: 'Repository is being processed.' });
   }
 
   // Check if the job is completed
   const completedJobs = await repoQueue.getJobs(['completed']);
-  const completedJob = completedJobs.find((job) => job.data.repoUrl === repoUrl);
+  const completedJob = completedJobs.find(
+    (job) => job.data.repoUrl === repoUrl
+  );
 
   if (completedJob) {
     return reply.status(200).send({
@@ -32,15 +38,34 @@ app.get('/leaderboard', async (request, reply) => {
     });
   }
 
-    // Add a new job for processing
-    await repoQueue.add({ repoUrl });
-    return reply.status(202).send({ message: 'Repository is being processed.' });
-
-
-     
+  // Add a new job for processing
+  await repoQueue.add({ repoUrl });
+  return reply.status(202).send({ message: 'Repository is being processed.' });
 });
 
+app.get('/repositories/jobs', async (req, reply) => {
+  try {
+    // Fetch jobs that are waiting or actively being processed
+    const waitingJobs = await repoQueue.getJobs(['waiting']);
+    const activeJobs = await repoQueue.getJobs(['active']);
+    const completedJobs = await repoQueue.getJobs(['completed']);
 
+    // Combine and map the jobs to relevant data
+    const jobs = await Promise.all(
+      [...waitingJobs, ...activeJobs, ...completedJobs].map(async (job) => ({
+        id: job.id,
+        repoUrl: job.data.repoUrl,
+        status: await job.getState(),
+      }))
+    );
+
+
+    await reply.send(jobs);
+  } catch (error) {
+    console.error('Failed to fetch repository jobs:', error);
+    reply.status(500).send({ error: 'Failed to fetch repository jobs' });
+  }
+});
 
 // Hook to disconnect Prisma when the server shuts down
 app.addHook('onClose', async () => {
