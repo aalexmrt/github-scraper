@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import prisma from '../utils/prisma';
+import { repoQueue } from './queueService';
+
 
 const REPO_BASE_PATH = '/data/repos';
 
