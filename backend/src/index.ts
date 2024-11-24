@@ -2,6 +2,7 @@ import fastify from 'fastify';
 import dotenv from 'dotenv';
 import prisma from './utils/prisma';
 import { repoQueue } from './services/queueService';
+import { isValidGitHubUrl } from './services/repoService';
 dotenv.config();
 
 const app = fastify();
@@ -19,28 +20,37 @@ app.get('/leaderboard', async (request, reply) => {
       .send({ error: 'repoUrl query parameter is required' });
   }
 
+  if (!isValidGitHubUrl(repoUrl)) {
+    return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
+  }
+
   try {
     // Check if a job is already in progress
-    const activeJob = await repoQueue.getJob(repoUrl);
-    if (activeJob) {
-      const state = await activeJob.getState();
-      if (state === 'waiting' || state === 'active') {
-        return reply
-          .status(202)
-          .send({ message: 'Repository is being processed.' });
-      }
+    // Check if a job is already in progress
+    const jobs = await repoQueue.getJobs(['waiting', 'active']);
+    const existingJob = jobs.find((job) => job.data.repoUrl === repoUrl);
+
+    if (existingJob) {
+      return reply
+        .status(202)
+        .send({ message: 'Repository is being processed.' });
     }
 
     // Check if the job is completed
-    const completedJob = await repoQueue.getJob(repoUrl);
-    if (completedJob && (await completedJob.getState()) === 'completed') {
+    const completedJobs = await repoQueue.getJobs(['completed']);
+    const completedJob = completedJobs.find(
+      (job) => job.data.repoUrl === repoUrl
+    );
+
+    if (completedJob) {
       return reply.status(200).send({
         leaderboard: completedJob.returnvalue, // Fetch result
       });
     }
 
     // Add a new job for processing
-    await repoQueue.add(repoUrl, { jobId: repoUrl });
+    await repoQueue.add({ repoUrl });
+    console.log('Job added to queue:', repoUrl);
     return reply
       .status(202)
       .send({ message: 'Repository is being processed.' });

@@ -13,7 +13,7 @@ if (!fs.existsSync(REPO_BASE_PATH)) {
 }
 
 // Utility to validate GitHub repository URLs
-const isValidGitHubUrl = (url: string): boolean => {
+export const isValidGitHubUrl = (url: string): boolean => {
   const regex = /^(https:\/\/|git@)github\.com[:\/][\w-]+\/[\w-]+(\.git)?$/i;
   // Examples of URLs this regex will match:
   // - HTTPS: "https://github.com/username/repository"
@@ -25,9 +25,6 @@ const isValidGitHubUrl = (url: string): boolean => {
 
 export const processRepository = async (repoUrl: string): Promise<string> => {
   // Validate the URL format
-  if (!isValidGitHubUrl(repoUrl)) {
-    throw new Error(`Invalid GitHub repository URL: ${repoUrl}`);
-  }
 
   const repoName =
     repoUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
