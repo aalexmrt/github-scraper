@@ -71,6 +71,14 @@ Ensure the following tools are installed on your machine:
 
 4. **Access the Application**:
    - **Backend API**: Accessible at `http://localhost:3000`
+     - To verify if the backend is running, you can use the `/health` endpoint:
+       ```bash
+       curl -X GET "http://localhost:3000/health"
+       ```
+       - **Expected Response**:
+         ```json
+         { "message": "Server is running." }
+         ```
    - **Frontend UI**: Accessible at `http://localhost:4000`
 
 ---
