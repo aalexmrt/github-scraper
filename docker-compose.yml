@@ -8,7 +8,7 @@ services:
       - ./backend:/app # Mount the code directory
       - /app/node_modules # Exclude node_modules from the host
       - repo_volume:/data/repos
-    command: npm run dev # Use nodemon for development
+    command: sh -c "npx prisma generate && npm run dev"
     environment:
       - NODE_ENV=development
       - REDIS_HOST=redis
