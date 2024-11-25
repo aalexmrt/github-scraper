@@ -159,3 +159,11 @@ The application frontend provides an interface to interact with the backend, mak
 <img width="1728" alt="Screenshot 2024-11-24 at 5 17 49 PM" src="https://github.com/user-attachments/assets/97ac4397-2556-44c5-89df-011133f6b455">
 <img width="1728" alt="Screenshot 2024-11-24 at 5 18 03 PM" src="https://github.com/user-attachments/assets/200d80e1-59ed-4821-8a60-9a0f8807096f">
 
+
+## **Next Steps**
+
+### **Backend**
+- [ ] Add support for private repositories with GitHub token validation and secure handling in the `/leaderboard` endpoint.
+
+### **Frontend**
+- [ ] Add a form to input a repository URL and optional GitHub token, with error handling and an indicator for private repository requirements.
