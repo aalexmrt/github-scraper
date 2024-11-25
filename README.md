@@ -22,7 +22,6 @@ A scalable GitHub repository scraper that analyzes commit history and generates 
 ### Prerequisites
 
 Ensure the following tools are installed on your machine:
-- [Node.js](https://nodejs.org/) (v18+)
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 - [Git](https://git-scm.com/)
 
