@@ -5,12 +5,14 @@ import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useRepositoryContext } from '../context/RepositoryContext';
 
 export const RepositoryForm: React.FC = () => {
   const [repoUrl, setRepoUrl] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { refreshJobs } = useRepositoryContext(); // Access refreshJobs from context
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,6 +32,7 @@ export const RepositoryForm: React.FC = () => {
         response.data.message || 'Repository added to processing queue.'
       );
       setRepoUrl('');
+      refreshJobs(); // Refresh jobs after a successful submission
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to process repository.');
     } finally {
