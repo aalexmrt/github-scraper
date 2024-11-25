@@ -29,6 +29,11 @@ export const processRepository = async (repoUrl: string): Promise<string> => {
   const git = simpleGit();
 
   try {
+    // Check if the repository exists in the database
+    const existingRepo = await prisma.repository.findUnique({
+      where: { url: repoUrl },
+    });
+    console.log(existingRepo, 'this is the existing repo');
     if (fs.existsSync(repoPath)) {
       console.log(`Fetching updates for repository: ${repoName}`);
       await git.cwd(repoPath).fetch();
