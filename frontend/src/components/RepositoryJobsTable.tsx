@@ -1,8 +1,5 @@
 'use client';
 
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -18,36 +15,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, GitBranch, AlertCircle } from 'lucide-react';
 import { LeaderBoard } from './LeaderBoard';
+import { useRepositoryContext } from '../context/RepositoryContext';
+import { Job } from '../services/repositoryService';
 
-interface Job {
-  id: string;
-  repoUrl: string;
-  status: 'active' | 'waiting' | 'completed';
-}
-
-const fetchRepositoryJobs = async (): Promise<Job[]> => {
-  const response = await axios.get('/api/repositories/jobs');
-  return response.data;
-};
-
-const statusConfig = {
+const statusConfig: Record<Job['status'], { label: string; color: string }> = {
   active: { label: 'Processing', color: 'bg-yellow-500 text-yellow-100' },
   waiting: { label: 'On Queue', color: 'bg-blue-500 text-blue-100' },
   completed: { label: 'Completed', color: 'bg-green-500 text-green-100' },
 };
 
 export function RepositoryJobsTable() {
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
   const {
-    data: jobs,
+    jobs,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ['repositoryJobs'],
-    queryFn: fetchRepositoryJobs,
-  });
+    selectedRepo,
+    setSelectedRepo,
+    searchTerm,
+    setSearchTerm,
+  } = useRepositoryContext();
 
   const handleRepoClick = (repoUrl: string) => {
     setSelectedRepo(repoUrl);
