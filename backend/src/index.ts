@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import prisma from './utils/prisma';
 import { repoQueue } from './services/queueService';
 import { isValidGitHubUrl } from './services/repoService';
+import { normalizeRepoUrl } from './utils/normalizeUrl';
 dotenv.config();
 
 const app = fastify();
@@ -24,11 +25,13 @@ app.get('/leaderboard', async (request, reply) => {
     return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
   }
 
+  const normalizedUrl = normalizeRepoUrl(repoUrl);
+  console.log(normalizedUrl);
+
   try {
     // Check if a job is already in progress
-    // Check if a job is already in progress
     const jobs = await repoQueue.getJobs(['waiting', 'active']);
-    const existingJob = jobs.find((job) => job.data.repoUrl === repoUrl);
+    const existingJob = jobs.find((job) => job.data.repoUrl === normalizedUrl);
 
     if (existingJob) {
       return reply
@@ -39,7 +42,7 @@ app.get('/leaderboard', async (request, reply) => {
     // Check if the job is completed
     const completedJobs = await repoQueue.getJobs(['completed']);
     const completedJob = completedJobs.find(
-      (job) => job.data.repoUrl === repoUrl
+      (job) => job.data.repoUrl === normalizedUrl
     );
 
     if (completedJob) {
@@ -49,8 +52,8 @@ app.get('/leaderboard', async (request, reply) => {
     }
 
     // Add a new job for processing
-    await repoQueue.add({ repoUrl });
-    console.log('Job added to queue:', repoUrl);
+    await repoQueue.add({ repoUrl: normalizedUrl });
+    console.log('Job added to queue:', normalizedUrl);
     return reply
       .status(202)
       .send({ message: 'Repository is being processed.' });

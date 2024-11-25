@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import prisma from '../utils/prisma';
-import { repoQueue } from './queueService';
 
 const REPO_BASE_PATH = '/data/repos';
 
@@ -23,8 +22,6 @@ export const isValidGitHubUrl = (url: string): boolean => {
 };
 
 export const processRepository = async (repoUrl: string): Promise<string> => {
-  // Validate the URL format
-
   const repoName =
     repoUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
   const repoPath = path.join(REPO_BASE_PATH, repoName);

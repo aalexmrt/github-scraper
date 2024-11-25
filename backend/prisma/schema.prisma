@@ -22,4 +22,13 @@ model Contributor {
   profileUrl  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  repositories Repository[]
+
+}
+
+model Repository {
+  id          Int          @id @default(autoincrement())
+  url         String       @unique
+  lastFetched DateTime     @default(now())
+  contributors Contributor[]
 }
