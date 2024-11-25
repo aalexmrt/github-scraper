@@ -163,6 +163,7 @@ The application frontend provides an interface to interact with the backend, mak
 
 ### **Backend**
 - [ ] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
+- [ ] Update the /leaderboard endpoint to split responsibilities by creating a new endpoint for processing and retrieving the leaderboard, and include the repository URL in the response.
 
 ### **Frontend**
 - [ ] Add a form to input a repository URL and optional GitHub token.
