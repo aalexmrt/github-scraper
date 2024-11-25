@@ -163,7 +163,7 @@ The application frontend provides an interface to interact with the backend, mak
 ## **Next Steps**
 
 ### **Backend**
-- [ ] Add support for private repositories with GitHub token validation and secure handling in the `/leaderboard` endpoint.
+- [ ] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
 
 ### **Frontend**
-- [ ] Add a form to input a repository URL and optional GitHub token, with error handling and an indicator for private repository requirements.
+- [ ] Add a form to input a repository URL and optional GitHub token.
