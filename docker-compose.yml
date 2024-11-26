@@ -16,6 +16,8 @@ services:
     depends_on:
       - db
       - redis
+    restart: always
+
 
   frontend:
     build:
@@ -37,11 +39,6 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: github_scraper
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     volumes:
       - pg_data:/var/lib/postgresql/data
 
@@ -64,6 +61,7 @@ services:
     depends_on:
       - app
       - redis
+    restart: always
 
 volumes:
   repo_volume:
