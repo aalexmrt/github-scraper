@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import prisma from '../utils/prisma';
-import { repoQueue } from './queueService';
 
 const REPO_BASE_PATH = '/data/repos';
 
@@ -23,8 +22,6 @@ export const isValidGitHubUrl = (url: string): boolean => {
 };
 
 export const processRepository = async (repoUrl: string): Promise<string> => {
-  // Validate the URL format
-
   const repoName =
     repoUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
   const repoPath = path.join(REPO_BASE_PATH, repoName);
@@ -32,6 +29,11 @@ export const processRepository = async (repoUrl: string): Promise<string> => {
   const git = simpleGit();
 
   try {
+    // Check if the repository exists in the database
+    const existingRepo = await prisma.repository.findUnique({
+      where: { url: repoUrl },
+    });
+    console.log(existingRepo, 'this is the existing repo');
     if (fs.existsSync(repoPath)) {
       console.log(`Fetching updates for repository: ${repoName}`);
       await git.cwd(repoPath).fetch();
