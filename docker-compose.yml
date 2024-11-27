@@ -16,6 +16,8 @@ services:
     depends_on:
       - db
       - redis
+    restart: always
+
 
   frontend:
     build:
@@ -59,6 +61,7 @@ services:
     depends_on:
       - app
       - redis
+    restart: always
 
 volumes:
   repo_volume:
