@@ -3,7 +3,7 @@ import { syncRepository, generateLeaderboard } from '../services/repoService';
 import prisma from '../utils/prisma';
 
 repoQueue.process(async (job) => {
-  const { dbRepository } = job.data;
+  const { dbRepository, token = null } = job.data;
 
   try {
     await prisma.repository.update({
@@ -11,7 +11,7 @@ repoQueue.process(async (job) => {
       data: { state: 'in_progress', lastAttempt: new Date() },
     });
 
-    await syncRepository(dbRepository);
+    await syncRepository(dbRepository, token);
     await generateLeaderboard(dbRepository);
 
     // Update repository state to completed

@@ -23,17 +23,27 @@ if (!fs.existsSync(REPO_BASE_PATH)) {
 }
 
 export const syncRepository = async (
-  dbRepository: DbRepository
+  dbRepository: DbRepository,
+  token: string | null = null
 ): Promise<string> => {
   const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
   const git = simpleGit();
-
+  console.log(dbRepository.url, 'this is the url');
+  const authenticatedRepoUrl = dbRepository.url.replace(
+    'https://github.com',
+    `https://${token}@github.com`
+  );
+  console.log(authenticatedRepoUrl, 'this is the authenticated repo url');
   try {
     if (fs.existsSync(repoPath)) {
       await git.cwd(repoPath).fetch();
       return `Repository ${dbRepository.pathName} updated successfully.`;
     } else {
-      await git.clone(dbRepository.url, repoPath, ['--bare']); // Clone the repository in a bare format because we don't need the working directory
+      const cloneUrl = authenticatedRepoUrl
+        ? authenticatedRepoUrl
+        : dbRepository.url;
+      console.log(cloneUrl, 'this is the clone url');
+      await git.clone(cloneUrl, repoPath, ['--bare']); // Clone the repository in a bare format because we don't need the working directory
       return `Repository ${dbRepository.pathName} cloned successfully.`;
     }
   } catch (error: any) {
@@ -57,8 +67,6 @@ export const syncRepository = async (
 
 async function getDbUser(author_email: string, usersCache: Map<string, any>) {
   let dbUser = null;
-  console.log(author_email, 'author_email');
-  console.log(usersCache, 'usersCache');
   // Determine username from no-reply email, if applicable
   const isNoReply = author_email.endsWith('@users.noreply.github.com');
 
