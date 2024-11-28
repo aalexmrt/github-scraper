@@ -126,15 +126,17 @@ Ensure the following tools are installed on your machine:
 
 #### Example Request
 
-````bash
+```bash
 curl -X POST "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
+```
 
 ### Responses
 
 #### Repository Added for Processing
+
 ```json
 { "message": "Repository is being processed." }
-````
+```
 
 #### Repository Already Processing
 
