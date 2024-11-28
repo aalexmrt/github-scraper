@@ -49,8 +49,10 @@ app.post('/leaderboard', async (request, reply) => {
       await repoQueue.add({ dbRepository, token });
     }
 
-    const token = authorization ? authorization.replace('Bearer ', '') : '';
-    await repoQueue.add({ dbRepository, token });
+    // Force failed repositories to be retried
+    // TODO: Implement logic/framework to retry failed repositories automatically
+    // const token = authorization ? authorization.replace('Bearer ', '') : '';
+    // await repoQueue.add({ dbRepository, token });
 
     switch (dbRepository.state) {
       case 'pending':
