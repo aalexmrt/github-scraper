@@ -80,9 +80,7 @@ export function LeaderBoard({
         <Button onClick={onBack} variant="ghost" className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to repositories
         </Button>
-        <CardTitle className="text-2xl font-bold">
-          Contributor Leaderboard
-        </CardTitle>
+        <CardTitle className="text-2xl font-bold">Top Contributors</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
@@ -113,15 +111,19 @@ export function LeaderBoard({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-4">
-                    <a href={contributor.profileUrl} target="_blank" rel="noopener noreferrer">
-                    <Avatar>
-                      <AvatarImage
-                        src={`https://github.com/${contributor.username}.png`}
-                      />
-                      <AvatarFallback>
-                        {contributor.username?.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <a
+                      href={contributor.profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Avatar>
+                        <AvatarImage
+                          src={`https://github.com/${contributor.username}.png`}
+                        />
+                        <AvatarFallback>
+                          {contributor.username?.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </a>
                     <div>
                       <div className="font-semibold">
