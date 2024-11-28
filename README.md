@@ -219,16 +219,23 @@ The application frontend provides an interface to interact with the backend, mak
 3. **View Contributor Leaderboard**
    - For completed repositories, click the **Leaderboard** button to view a detailed contributor leaderboard.
 
-<img width="1728" alt="Screenshot 2024-11-24 at 5 17 49 PM" src="https://github.com/user-attachments/assets/97ac4397-2556-44c5-89df-011133f6b455">
-<img width="1728" alt="Screenshot 2024-11-24 at 5 18 03 PM" src="https://github.com/user-attachments/assets/200d80e1-59ed-4821-8a60-9a0f8807096f">
+<img width="1728" alt="Screenshot 2024-11-28 at 2 54 21 PM" src="https://github.com/user-attachments/assets/e75a9997-405f-4b2c-83e6-6f24a28c1a20">
+<img width="1728" alt="Screenshot 2024-11-28 at 2 54 28 PM" src="https://github.com/user-attachments/assets/7ef773a2-39bc-4906-879d-c32f045090e9">
+<img width="1728" alt="Screenshot 2024-11-28 at 2 54 38 PM" src="https://github.com/user-attachments/assets/49417023-aab0-4edf-8158-91afdecbd138">
+
 
 ## **Next Steps**
 
 ### **Backend**
 
-- [ ] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
-- [ ] Update the /leaderboard endpoint to split responsibilities by creating a new endpoint for processing and retrieving the leaderboard, and include the repository URL in the response.
+- [X] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
+- [X] Update the /leaderboard endpoint to split responsibilities by creating a new endpoint for processing and retrieving the leaderboard, and include the repository URL in the response.
+- [ ] Improve handling API limits error and optimize the current flow.
+- [ ] Add retries to failed processed repositories
+- [ ] Continue improving general optimization and performance
+- [ ] Escale horizontally with multiple workers and with smart queues management 
 
 ### **Frontend**
 
-- [ ] Add a form to input a repository URL and optional GitHub token.
+- [X] Add a form to input a repository URL and optional GitHub token.
+- [ ] Improve UI...
