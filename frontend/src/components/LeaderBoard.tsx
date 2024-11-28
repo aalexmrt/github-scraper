@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trophy, GitCommit, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { getRepositoryLeaderboard } from '@/services/repositoryService';
 
 interface Contributor {
   commitCount: number;
@@ -24,13 +24,6 @@ interface Contributor {
   email: string;
   profileUrl: string;
 }
-
-const fetchLeaderboard = async (repoUrl: string): Promise<Contributor[]> => {
-  const response = await axios.get('/api/leaderboard', {
-    params: { repoUrl },
-  });
-  return response.data.leaderboard;
-};
 
 export function LeaderBoard({
   repoUrl,
@@ -45,9 +38,9 @@ export function LeaderBoard({
     isError,
   } = useQuery({
     queryKey: ['leaderboard', repoUrl],
-    queryFn: () => fetchLeaderboard(repoUrl),
+    queryFn: () => getRepositoryLeaderboard(repoUrl),
   });
-
+  console.log(contributors, 'this is contributors');
   if (isLoading) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -74,7 +67,7 @@ export function LeaderBoard({
             Error loading leaderboard.
           </p>
           <Button onClick={onBack} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jobs
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to repositories
           </Button>
         </CardContent>
       </Card>
@@ -85,7 +78,7 @@ export function LeaderBoard({
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between">
         <Button onClick={onBack} variant="ghost" className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jobs
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to repositories
         </Button>
         <CardTitle className="text-2xl font-bold">
           Contributor Leaderboard

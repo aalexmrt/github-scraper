@@ -27,7 +27,7 @@ export const RepositoryForm: React.FC = () => {
     setError(null);
 
     try {
-      const response = await axios.get(`/api/leaderboard?repoUrl=${repoUrl}`);
+      const response = await axios.post(`/api/leaderboard?repoUrl=${repoUrl}`);
       setMessage(
         response.data.message || 'Repository added to processing queue.'
       );

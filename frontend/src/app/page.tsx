@@ -1,5 +1,5 @@
 import { RepositoryForm } from '@/components/RepositoryForm';
-import { RepositoryJobsTable } from '@/components/RepositoryJobsTable';
+import { RepositoriesTable } from '@/components/RepositoriesTable';
 import { RepositoryProvider } from '@/context/RepositoryContext';
 export default function Home() {
   return (
@@ -7,7 +7,7 @@ export default function Home() {
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
         <RepositoryProvider>
           <RepositoryForm />
-          <RepositoryJobsTable />
+          <RepositoriesTable />
         </RepositoryProvider>
       </main>
     </div>
