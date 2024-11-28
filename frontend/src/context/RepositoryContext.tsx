@@ -52,19 +52,19 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // TODO: Implement websocket connection to enhance the user experience
   // Check for queued jobs and toggle refetching
-  console.log(repositories)
+
   useEffect(() => {
     const hasQueuedRepositories = repositories?.some(
-      (repository: any) => repository.state === 'pending' || repository.state === 'in_progress'
+      (repository: any) =>
+        repository.state === 'pending' || repository.state === 'in_progress'
     );
-
 
     if (hasQueuedRepositories && !isRefetching) {
       setIsRefetching(true); // Start refetching
     } else if (!hasQueuedRepositories && isRefetching) {
       setIsRefetching(false); // Stop refetching
     }
-  }, [ isRefetching]);
+  }, [repositories, isRefetching]);
   // Function to trigger a manual refresh of jobs
   const refreshJobs = async () => {
     await refetch();

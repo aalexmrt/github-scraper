@@ -2,9 +2,10 @@ import fastify from 'fastify';
 import dotenv from 'dotenv';
 import prisma from './utils/prisma';
 import { repoQueue } from './services/queueService';
-import { getLeaderboardForRepository, isValidGitHubUrl } from './services/repoService';
+import { getLeaderboardForRepository } from './services/repoService';
+import { isValidGitHubUrl } from './utils/isValidGitHubUrl';
 import { normalizeRepoUrl } from './utils/normalizeUrl';
-import path from 'path';
+
 dotenv.config();
 
 const app = fastify();
@@ -12,7 +13,6 @@ const app = fastify();
 app.get('/health', async (request, reply) => {
   return reply.status(200).send({ message: 'Server is running.' });
 });
-
 
 app.post('/leaderboard', async (request, reply) => {
   const { repoUrl } = request.query as { repoUrl?: string };
@@ -28,47 +28,15 @@ app.post('/leaderboard', async (request, reply) => {
   }
 
   const normalizedUrl = normalizeRepoUrl(repoUrl);
-
-  let dbRepository = null;
   try {
-
-    // Check if the repository already exists in the database
-    dbRepository = await prisma.repository.findUnique({
+    let dbRepository = await prisma.repository.findUnique({
       where: { url: normalizedUrl },
     });
 
-    if (dbRepository) {
-      const { state, lastProcessedAt } = dbRepository;
-
-
-      if (state === 'in_progress') {
-        return reply.status(202).send({
-          message: 'Repository is being processed.',
-        });
-      }
-
-      if (state === 'failed') {
-        return reply.status(500).send({
-          message: 'Repository processing failed.',
-          lastProcessedAt,
-        });
-      }
-
-
-      if (state === 'completed') {
-        return reply.status(200).send({
-          message: 'Repository processed successfully.',
-          lastProcessedAt,
-        });
-      }
-  
-
-    } else {
-       // Add new repository to the database
-       const repoName =
-       normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
-       
-       dbRepository = await prisma.repository.create({
+    if (!dbRepository) {
+      const repoName =
+        normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
+      dbRepository = await prisma.repository.create({
         data: {
           url: normalizedUrl,
           pathName: repoName,
@@ -76,18 +44,31 @@ app.post('/leaderboard', async (request, reply) => {
           lastAttempt: new Date(),
         },
       });
+      await repoQueue.add({ dbRepository });
+    }
 
-
-     // Add a new job for processing
-     await repoQueue.add({ dbRepository});
-
-     return reply
-       .status(202)
-       .send({ message: 'Repository is being processed.' });
-   }
-    
+    switch (dbRepository.state) {
+      case 'pending':
+      case 'in_progress':
+        return reply
+          .status(202)
+          .send({ message: 'Repository is being processed.' });
+      case 'failed':
+        return reply.status(500).send({
+          message: 'Repository processing failed.',
+          lastProcessedAt: dbRepository.lastProcessedAt,
+        });
+      case 'completed':
+        return reply.status(200).send({
+          message: 'Repository processed successfully.',
+          lastProcessedAt: dbRepository.lastProcessedAt,
+        });
+      default:
+        return reply
+          .status(202)
+          .send({ message: 'Repository processing started.' });
+    }
   } catch (error) {
-    console.error('Error in /leaderboard:', error);
     return reply
       .status(500)
       .send({ error: 'Failed to process the leaderboard request.' });
@@ -109,7 +90,6 @@ app.get('/leaderboard', async (request, reply) => {
 
   const normalizedUrl = normalizeRepoUrl(repoUrl);
 
-
   let dbRepository = null;
   try {
     // Check if the repository already exists in the database
@@ -117,32 +97,29 @@ app.get('/leaderboard', async (request, reply) => {
       where: { url: normalizedUrl },
     });
 
-    if(!dbRepository) {
-      return reply.status(404).send({ error: 'Repository not found, remember to submit for processing first.' });
+    if (!dbRepository) {
+      return reply.status(404).send({
+        error: 'Repository not found, remember to submit for processing first.',
+      });
     }
 
-    if (dbRepository) {
-      const { state, lastProcessedAt } = dbRepository;
-      if (state === 'in_progress') {
-        return reply.status(202).send({
-          message: 'Repository still processing.',
-        });
-      }
-
-
-      if (state === 'completed') {
+    switch (dbRepository.state) {
+      case 'in_progress':
+      case 'pending':
+        return reply
+          .status(202)
+          .send({ message: 'Repository still processing.' });
+      case 'completed':
         const leaderboard = await getLeaderboardForRepository(dbRepository);
         return reply.status(200).send(leaderboard);
-    
-      }
-
+      default:
+        return reply
+          .status(404)
+          .send({ error: 'Repository processing status unknown.' });
     }
-    
   } catch (error) {
     console.error('Error in /leaderboard:', error);
-    return reply
-      .status(500)
-      .send({ error: 'Failed to return leaderboard.' });
+    return reply.status(500).send({ error: 'Failed to return leaderboard.' });
   }
 });
 
@@ -164,8 +141,13 @@ app.addHook('onClose', async () => {
 // Start the server
 const startServer = async () => {
   try {
-    await app.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('Server is running on http://localhost:3000');
+    await app.listen({
+      port: Number(process.env.PORT) || 3000,
+      host: process.env.BACKEND_URL || '0.0.0.0',
+    });
+    console.log(
+      `Server is running on http://${process.env.BACKEND_URL || 'localhost'}:${process.env.PORT || 3000}`
+    );
   } catch (err) {
     app.log.error(err);
     process.exit(1);

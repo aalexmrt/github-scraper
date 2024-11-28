@@ -4,6 +4,17 @@ import path from 'path';
 import axios from 'axios';
 import prisma from '../utils/prisma';
 
+export interface DbRepository {
+  id: number;
+  url: string;
+  pathName: string;
+  state: string;
+  lastAttempt: Date;
+  lastProcessedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const REPO_BASE_PATH = '/data/repos';
 
 // Ensure the base directory exists
@@ -11,18 +22,10 @@ if (!fs.existsSync(REPO_BASE_PATH)) {
   fs.mkdirSync(REPO_BASE_PATH, { recursive: true });
 }
 
-export const isValidGitHubUrl = (url: string): boolean => {
-  const regex = /^(https:\/\/|git@)github\.com[:\/][\w-]+\/[\w-]+(\.git)?\/?$/i;
-  // This regex now accounts for:
-  // - HTTPS with or without a trailing slash
-  // - HTTPS with .git
-  // - SSH URLs
-  return regex.test(url);
-};
-
-export const processRepository = async (dbRepository: any): Promise<string> => {
+export const syncRepository = async (
+  dbRepository: DbRepository
+): Promise<string> => {
   const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
-  console.log(repoPath, fs.existsSync(repoPath), 'this');
   const git = simpleGit();
 
   try {
@@ -54,130 +57,6 @@ export const processRepository = async (dbRepository: any): Promise<string> => {
     }
   }
 };
-
-interface UserInfo {
-  identifier: string;
-  username: string | null;
-  profileUrl: string | null;
-  dbUser?: any | null;
-}
-
-// Function to resolve user information based on email
-// async function resolveUserInfo(
-//   email: string, // Email of the contributor
-//   authorName: string, // Author name as fallback if no email
-//   identifiersCache: Map<number, { dbUser: any | null }>
-//   // Cache to store and retrieve previously fetched user information
-// ) {
-//   // Check if the email is a GitHub noreply email
-//   if (email.endsWith('@users.noreply.github.com')) {
-//     // Extract username from the noreply email
-//     const username = email.split('@')[0].split('+')[1] || email.split('@')[0];
-//     // Return user info with GitHub profile URL
-//     let dbUser = null;
-
-//     dbUser = await prisma.contributor.findUnique({
-//       where: {
-//         identifier: username,
-//       },
-//     });
-
-//     if (!dbUser) {
-//       dbUser = await prisma.contributor.create({
-//         data: {
-//           identifier: username,
-//           username,
-//           profileUrl: `https://github.com/${username}`,
-//         },
-//       });
-//     }
-
-//     return {
-//       identifier: username,
-//       username,
-//       profileUrl: `https://github.com/${username}`,
-//     };
-//   }
-
-//   // Check if the user information is already in the cache
-//   const cachedUser = emailCache.get(email);
-//   if (cachedUser) {
-//     // Return cached user info if available
-//     return cachedUser;
-//   }
-
-//   // If not cached, fetch user information from GitHub API
-//   try {
-//     // Search in our database for the user
-//     const dbUser = await prisma.contributor.findUnique({
-//       where: { email },
-//     });
-
-//     if (dbUser) {
-//       const userInfo = {
-//         identifier: dbUser.identifier,
-//         username: dbUser.username,
-//         profileUrl: dbUser.profileUrl,
-//         dbUser,
-//       };
-//       emailCache.set(email, userInfo);
-//       return userInfo;
-//     }
-
-//     console.log('We are doing an API call');
-//     const response = await axios.get(
-//       `https://api.github.com/search/users?q=${email}+in:email`,
-//       {
-//         headers: {
-//           Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-//         },
-//       }
-//     );
-//     // Check if the API call returned any users
-//     if (response.data.items.length > 0) {
-//       const { login, html_url } = response.data.items[0];
-//       // Construct user info from API response
-//       const userInfo: UserInfo = {
-//         identifier: login,
-//         username: login,
-//         profileUrl: html_url,
-//       };
-
-//       // Set the user in the database
-//       const dbUser = await prisma.contributor.create({
-//         data: {
-//           identifier: login,
-//           username: login,
-//           email: email,
-//           profileUrl: html_url,
-//         },
-//       });
-//       // Cache this user info for future reference
-//       emailCache.set(email, { ...userInfo, dbUser });
-//       return userInfo;
-//     }
-//   } catch (error) {
-//     // Log any errors during the API call
-//     console.error(`Failed to fetch user info for email: ${email}`, error);
-//   }
-
-//   // If user info can't be resolved, return a fallback with the email as the identifier
-//   const fallbackInfo: UserInfo = {
-//     identifier: email,
-//     username: 'Unknown Username',
-//     profileUrl: 'Unknown Profile',
-//   };
-//   // Set the fallback info in the database, this way no unnecessary API calls will be made
-//   const dbUser = await prisma.contributor.create({
-//     data: {
-//       identifier: email,
-//       email: email,
-//     },
-//   });
-//   // Cache the fallback info as well
-//   emailCache.set(email, { ...fallbackInfo, dbUser });
-//   return fallbackInfo;
-// }
 
 async function getDbUser(
   author_email: string,
@@ -312,22 +191,17 @@ async function getDbUser(
 
 // Function to generate a leaderboard for contributors based on their commits in a repository
 export const generateLeaderboard = async (dbRepository: any) => {
-  // Build the path to where the repository is stored
   const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
-  // Initialize a git interface pointing to the repository path
   const git = simpleGit(repoPath);
 
-  const noReplyEmailUsersCache = new Map(); // dbUserId, noReplyEmail
-  const emailUsersCache = new Map(); // dbUserId, email
+  const noReplyEmailUsersCache = new Map();
+  const emailUsersCache = new Map();
   const usernameUsersCache = new Map();
-
-  const repositoryContributorCache = new Map(); // dbUserId, repositoryContributorId
+  const repositoryContributorCache = new Map();
 
   try {
-    // Fetch the commit log from the git repository
     const log = await git.log();
 
-    // Process each commit in the log
     for (const { author_email, author_name } of log.all) {
       // Let's skip commits without an email or name
       if (!author_email || !author_name) {
@@ -363,21 +237,19 @@ export const generateLeaderboard = async (dbRepository: any) => {
             repositoryId: dbRepository.id,
           },
         });
-        console.log(repositoryContributor);
+
         repositoryContributorCache.set(dbUser.id, repositoryContributor);
       }
     }
 
-    for (const [key, value] of repositoryContributorCache) {
-      await prisma.repositoryContributor.update({
-        where: {
-          id: value.id,
-        },
-        data: {
-          commitCount: value.commitCount,
-        },
-      });
-    }
+    await prisma.$transaction(
+      Array.from(repositoryContributorCache.values()).map((contributor) =>
+        prisma.repositoryContributor.update({
+          where: { id: contributor.id },
+          data: { commitCount: contributor.commitCount },
+        })
+      )
+    );
 
     const leaderboard = Array.from(repositoryContributorCache.values()).sort(
       (a, b) => b.commitCount - a.commitCount
@@ -394,27 +266,19 @@ export const generateLeaderboard = async (dbRepository: any) => {
 
 export const getLeaderboardForRepository = async (dbRepository: any) => {
   const leaderboard = await prisma.repositoryContributor.findMany({
-    where: {
-      repositoryId: dbRepository.id,
-    },
-    include: {
-      contributor: true,
-    },
-    orderBy: {
-      commitCount: 'desc',
-    },
+    where: { repositoryId: dbRepository.id },
+    include: { contributor: true },
+    orderBy: { commitCount: 'desc' },
   });
-
-
 
   return {
     repository: dbRepository.url,
-    top_contributors: leaderboard.map((contributor: any) => {
+    top_contributors: leaderboard.map(({ contributor, commitCount }) => {
       return {
-        username: contributor.contributor.username,
-        profileUrl: contributor.contributor.profileUrl,
-        commitCount: contributor.commitCount,
-        email: contributor.contributor.email,
+        username: contributor.username,
+        profileUrl: contributor.profileUrl,
+        commitCount: commitCount,
+        email: contributor.email,
       };
     }),
   };
