@@ -113,6 +113,7 @@ export function LeaderBoard({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-4">
+                    <a href={contributor.profileUrl} target="_blank" rel="noopener noreferrer">
                     <Avatar>
                       <AvatarImage
                         src={`https://github.com/${contributor.username}.png`}
@@ -121,6 +122,7 @@ export function LeaderBoard({
                         {contributor.username?.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
+                    </a>
                     <div>
                       <div className="font-semibold">
                         {contributor.username || 'Unknown'}
