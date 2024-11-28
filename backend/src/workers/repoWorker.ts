@@ -1,18 +1,37 @@
 import { repoQueue } from '../services/queueService';
-import { processRepository, generateLeaderboard } from '../services/repoService';
-
-console.log('Worker started, listening for repository processing jobs...');
+import { syncRepository, generateLeaderboard } from '../services/repoService';
+import prisma from '../utils/prisma';
 
 repoQueue.process(async (job) => {
-  const { repoUrl } = job.data;
-  console.log(`Processing repository: ${repoUrl}`);
+  const { dbRepository, token = null } = job.data;
+
   try {
-    const message = await processRepository(repoUrl);
-    const leaderboard = await generateLeaderboard(repoUrl);
-    console.log(`Repository processed: ${message}`);
-    return leaderboard;
+    await prisma.repository.update({
+      where: { id: dbRepository.id },
+      data: { state: 'in_progress', lastAttempt: new Date() },
+    });
+
+    await syncRepository(dbRepository, token);
+    await generateLeaderboard(dbRepository);
+
+    // Update repository state to completed
+    await prisma.repository.update({
+      where: { id: dbRepository.id },
+      data: {
+        state: 'completed',
+        lastProcessedAt: new Date(),
+      },
+    });
+
+    return `Repository ${dbRepository.url} processed successfully at ${dbRepository.lastProcessedAt}`;
   } catch (error: any) {
-    console.error(`Failed to process repository ${repoUrl}: ${error.message}`);
+    await prisma.repository.update({
+      where: { id: dbRepository.id },
+      data: { state: 'failed' },
+    });
+    console.error(
+      `Failed to process repository ${dbRepository.url}: ${error.message}`
+    );
     throw error; // Ensures the job is marked as failed
   }
 });

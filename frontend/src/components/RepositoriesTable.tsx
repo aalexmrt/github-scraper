@@ -16,17 +16,18 @@ import { Input } from '@/components/ui/input';
 import { Search, GitBranch, AlertCircle } from 'lucide-react';
 import { LeaderBoard } from './LeaderBoard';
 import { useRepositoryContext } from '../context/RepositoryContext';
-import { Job } from '../services/repositoryService';
+import { Repository } from '../services/repositoryService';
 
-const statusConfig: Record<Job['status'], { label: string; color: string }> = {
-  active: { label: 'Processing', color: 'bg-yellow-500 text-yellow-100' },
-  waiting: { label: 'On Queue', color: 'bg-blue-500 text-blue-100' },
+const statusConfig: Record<Repository['state'], { label: string; color: string }> = {
+  failed: { label: 'Failed', color: 'bg-red-500 text-red-100' },
+  in_progress: { label: 'Processing', color: 'bg-yellow-500 text-yellow-100' },
+  pending: { label: 'On Queue', color: 'bg-blue-500 text-blue-100' },
   completed: { label: 'Completed', color: 'bg-green-500 text-green-100' },
 };
 
-export function RepositoryJobsTable() {
+export function RepositoriesTable() {
   const {
-    jobs,
+    repositories,
     isLoading,
     isError,
     selectedRepo,
@@ -39,9 +40,10 @@ export function RepositoryJobsTable() {
     setSelectedRepo(repoUrl);
   };
 
-  const filteredJobs = jobs?.filter((job) =>
-    job.repoUrl.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredRepositories = repositories?.filter((repository:any) =>
+    repository.url.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
 
   if (selectedRepo) {
     return (
@@ -110,35 +112,35 @@ export function RepositoryJobsTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredJobs?.map((job) => (
-                <TableRow key={job.id} className="hover:bg-muted/50">
+              {filteredRepositories?.map((repo) => (
+                <TableRow key={repo.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
                     <a
                       className="flex items-center space-x-2"
-                      href={job.repoUrl}
+                      href={repo.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <GitBranch className="w-4 h-4" />
-                      <span>{job.repoUrl}</span>
+                      <span>{repo.url}</span>
                     </a>
                   </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
                       className={`${
-                        statusConfig[job.status].color
+                        statusConfig[repo.state].color
                       } font-semibold`}
                     >
-                      {statusConfig[job.status].label}
+                      {statusConfig[repo.state].label}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleRepoClick(job.repoUrl)}
-                      disabled={job.status !== 'completed'}
+                      onClick={() => handleRepoClick(repo.url)}
+                      disabled={repo.state !== 'completed'}
                     >
                       Leaderboard
                     </Button>

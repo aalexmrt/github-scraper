@@ -2,13 +2,84 @@ import fastify from 'fastify';
 import dotenv from 'dotenv';
 import prisma from './utils/prisma';
 import { repoQueue } from './services/queueService';
-import { isValidGitHubUrl } from './services/repoService';
+import { getLeaderboardForRepository } from './services/repoService';
+import { isValidGitHubUrl } from './utils/isValidGitHubUrl';
+import { normalizeRepoUrl } from './utils/normalizeUrl';
+
 dotenv.config();
 
 const app = fastify();
 
 app.get('/health', async (request, reply) => {
   return reply.status(200).send({ message: 'Server is running.' });
+});
+
+app.post('/leaderboard', async (request, reply) => {
+  const { repoUrl } = request.query as { repoUrl?: string };
+  const { authorization } = request.headers;
+
+  if (!repoUrl) {
+    return reply
+      .status(400)
+      .send({ error: 'repoUrl query parameter is required' });
+  }
+
+  if (!isValidGitHubUrl(repoUrl)) {
+    return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
+  }
+
+  const normalizedUrl = normalizeRepoUrl(repoUrl);
+  try {
+    let dbRepository = await prisma.repository.findUnique({
+      where: { url: normalizedUrl },
+    });
+
+    if (!dbRepository) {
+      const repoName =
+        normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
+      dbRepository = await prisma.repository.create({
+        data: {
+          url: normalizedUrl,
+          pathName: repoName,
+          state: 'pending',
+          lastAttempt: new Date(),
+        },
+      });
+      const token = authorization ? authorization.replace('Bearer ', '') : '';
+      await repoQueue.add({ dbRepository, token });
+    }
+
+    // Force failed repositories to be retried
+    // TODO: Implement logic/framework to retry failed repositories automatically
+    // const token = authorization ? authorization.replace('Bearer ', '') : '';
+    // await repoQueue.add({ dbRepository, token });
+
+    switch (dbRepository.state) {
+      case 'pending':
+      case 'in_progress':
+        return reply
+          .status(202)
+          .send({ message: 'Repository is being processed.' });
+      case 'failed':
+        return reply.status(500).send({
+          message: 'Repository processing failed.',
+          lastProcessedAt: dbRepository.lastProcessedAt,
+        });
+      case 'completed':
+        return reply.status(200).send({
+          message: 'Repository processed successfully.',
+          lastProcessedAt: dbRepository.lastProcessedAt,
+        });
+      default:
+        return reply
+          .status(202)
+          .send({ message: 'Repository processing started.' });
+    }
+  } catch (error) {
+    return reply
+      .status(500)
+      .send({ error: 'Failed to process the leaderboard request.' });
+  }
 });
 
 app.get('/leaderboard', async (request, reply) => {
@@ -24,61 +95,45 @@ app.get('/leaderboard', async (request, reply) => {
     return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
   }
 
+  const normalizedUrl = normalizeRepoUrl(repoUrl);
+
+  let dbRepository = null;
   try {
-    // Check if a job is already in progress
-    // Check if a job is already in progress
-    const jobs = await repoQueue.getJobs(['waiting', 'active']);
-    const existingJob = jobs.find((job) => job.data.repoUrl === repoUrl);
+    // Check if the repository already exists in the database
+    dbRepository = await prisma.repository.findUnique({
+      where: { url: normalizedUrl },
+    });
 
-    if (existingJob) {
-      return reply
-        .status(202)
-        .send({ message: 'Repository is being processed.' });
-    }
-
-    // Check if the job is completed
-    const completedJobs = await repoQueue.getJobs(['completed']);
-    const completedJob = completedJobs.find(
-      (job) => job.data.repoUrl === repoUrl
-    );
-
-    if (completedJob) {
-      return reply.status(200).send({
-        leaderboard: completedJob.returnvalue, // Fetch result
+    if (!dbRepository) {
+      return reply.status(404).send({
+        error: 'Repository not found, remember to submit for processing first.',
       });
     }
 
-    // Add a new job for processing
-    await repoQueue.add({ repoUrl });
-    console.log('Job added to queue:', repoUrl);
-    return reply
-      .status(202)
-      .send({ message: 'Repository is being processed.' });
+    switch (dbRepository.state) {
+      case 'in_progress':
+      case 'pending':
+        return reply
+          .status(202)
+          .send({ message: 'Repository still processing.' });
+      case 'completed':
+        const leaderboard = await getLeaderboardForRepository(dbRepository);
+        return reply.status(200).send(leaderboard);
+      default:
+        return reply
+          .status(404)
+          .send({ error: 'Repository processing status unknown.' });
+    }
   } catch (error) {
     console.error('Error in /leaderboard:', error);
-    return reply
-      .status(500)
-      .send({ error: 'Failed to process the leaderboard request.' });
+    return reply.status(500).send({ error: 'Failed to return leaderboard.' });
   }
 });
 
-app.get('/repositories/jobs', async (req, reply) => {
+app.get('/repositories', async (req, reply) => {
   try {
-    // Fetch jobs that are waiting or actively being processed
-    const waitingJobs = await repoQueue.getJobs(['waiting']);
-    const activeJobs = await repoQueue.getJobs(['active']);
-    const completedJobs = await repoQueue.getJobs(['completed']);
-
-    // Combine and map the jobs to relevant data
-    const jobs = await Promise.all(
-      [...waitingJobs, ...activeJobs, ...completedJobs].map(async (job) => ({
-        id: job.id,
-        repoUrl: job.data.repoUrl,
-        status: await job.getState(),
-      }))
-    );
-
-    await reply.send(jobs);
+    const repositories = await prisma.repository.findMany();
+    return reply.status(200).send(repositories);
   } catch (error) {
     console.error('Failed to fetch repository jobs:', error);
     reply.status(500).send({ error: 'Failed to fetch repository jobs' });
@@ -93,8 +148,13 @@ app.addHook('onClose', async () => {
 // Start the server
 const startServer = async () => {
   try {
-    await app.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('Server is running on http://localhost:3000');
+    await app.listen({
+      port: Number(process.env.PORT) || 3000,
+      host: process.env.BACKEND_URL || '0.0.0.0',
+    });
+    console.log(
+      `Server is running on http://${process.env.BACKEND_URL || 'localhost'}:${process.env.PORT || 3000}`
+    );
   } catch (err) {
     app.log.error(err);
     process.exit(1);

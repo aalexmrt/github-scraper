@@ -3,7 +3,17 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import prisma from '../utils/prisma';
-import { repoQueue } from './queueService';
+
+export interface DbRepository {
+  id: number;
+  url: string;
+  pathName: string;
+  state: string;
+  lastAttempt: Date;
+  lastProcessedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const REPO_BASE_PATH = '/data/repos';
 
@@ -12,45 +22,41 @@ if (!fs.existsSync(REPO_BASE_PATH)) {
   fs.mkdirSync(REPO_BASE_PATH, { recursive: true });
 }
 
-export const isValidGitHubUrl = (url: string): boolean => {
-  console.log(url);
-  const regex = /^(https:\/\/|git@)github\.com[:\/][\w-]+\/[\w-]+(\.git)?\/?$/i;
-  // This regex now accounts for:
-  // - HTTPS with or without a trailing slash
-  // - HTTPS with .git
-  // - SSH URLs
-  return regex.test(url);
-};
-
-export const processRepository = async (repoUrl: string): Promise<string> => {
-  // Validate the URL format
-
-  const repoName =
-    repoUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
-  const repoPath = path.join(REPO_BASE_PATH, repoName);
-  console.log(repoPath, fs.existsSync(repoPath), 'this');
+export const syncRepository = async (
+  dbRepository: DbRepository,
+  token: string | null = null
+): Promise<string> => {
+  const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
   const git = simpleGit();
-
+  console.log(dbRepository.url, 'this is the url');
+  const authenticatedRepoUrl = dbRepository.url.replace(
+    'https://github.com',
+    `https://${token}@github.com`
+  );
+  console.log(authenticatedRepoUrl, 'this is the authenticated repo url');
   try {
     if (fs.existsSync(repoPath)) {
-      console.log(`Fetching updates for repository: ${repoName}`);
       await git.cwd(repoPath).fetch();
-      return `Repository ${repoName} updated successfully.`;
+      return `Repository ${dbRepository.pathName} updated successfully.`;
     } else {
-      console.log(`Cloning repository: ${repoUrl}`);
-      await git.clone(repoUrl, repoPath, ['--bare']); // Clone the repository in a bare format because we don't need the working directory
-      console.log(`Repository ${repoName} cloned successfully.`);
-      return `Repository ${repoName} cloned successfully.`;
+      const cloneUrl = authenticatedRepoUrl
+        ? authenticatedRepoUrl
+        : dbRepository.url;
+      console.log(cloneUrl, 'this is the clone url');
+      await git.clone(cloneUrl, repoPath, ['--bare']); // Clone the repository in a bare format because we don't need the working directory
+      return `Repository ${dbRepository.pathName} cloned successfully.`;
     }
   } catch (error: any) {
     // Handle git command failures
     if (error.message.includes('Could not resolve host')) {
-      throw new Error(`Network error: Unable to resolve host for ${repoUrl}`);
+      throw new Error(
+        `Network error: Unable to resolve host for ${dbRepository.url}`
+      );
     } else if (error.message.includes('Repository not found')) {
-      throw new Error(`Repository not found: ${repoUrl}`);
+      throw new Error(`Repository not found: ${dbRepository.url}`);
     } else if (error.message.includes('Permission denied')) {
       throw new Error(
-        `Permission denied: Ensure you have access to the repository ${repoUrl}`
+        `Permission denied: Ensure you have access to the repository ${dbRepository.url}`
       );
     } else {
       console.error(`Error processing repository: ${error.message}`);
@@ -59,173 +65,222 @@ export const processRepository = async (repoUrl: string): Promise<string> => {
   }
 };
 
-interface UserInfo {
-  identifier: string;
-  username: string | null;
-  profileUrl: string | null;
-}
+async function getDbUser(author_email: string, usersCache: Map<string, any>) {
+  let dbUser = null;
+  // Determine username from no-reply email, if applicable
+  const isNoReply = author_email.endsWith('@users.noreply.github.com');
 
-// Function to resolve user information based on email
-async function resolveUserInfo(
-  email: string, // Email of the contributor
-  authorName: string, // Author name as fallback if no email
-  emailCache: Map<
-    string,
-    { identifier: string; username: string | null; profileUrl: string | null }
-  >
-  // Cache to store and retrieve previously fetched user information
-) {
-  // If there is no email provided, use author name as the identifier
-  if (!email) {
-    return {
-      identifier: authorName,
-      username: 'Unknown Username',
-      profileUrl: 'Unknown Profile',
-    };
-  }
+  const username = isNoReply
+    ? author_email.split('@')[0].split('+')[1] || author_email.split('@')[0]
+    : null;
+  console.log(username, 'username');
+  dbUser =
+    usersCache.get(author_email) ||
+    (username ? usersCache.get(username) : null);
+  if (dbUser) return dbUser;
+  console.log(dbUser, 'dbUser from here');
 
-  // Check if the email is a GitHub noreply email
-  if (email.endsWith('@users.noreply.github.com')) {
-    // Extract username from the noreply email
-    const username = email.split('@')[0].split('+')[1] || email.split('@')[0];
-    // Return user info with GitHub profile URL
-    return {
-      identifier: username,
-      username,
-      profileUrl: `https://github.com/${username}`,
-    };
-  }
-
-  // Check if the user information is already in the cache
-  const cachedUser = emailCache.get(email);
-  if (cachedUser) {
-    // Return cached user info if available
-    return cachedUser;
-  }
-
-  // If not cached, fetch user information from GitHub API
-  try {
-    // Search in our database for the user
-    const dbUser = await prisma.contributor.findUnique({
-      where: { email },
-    });
-
-    if (dbUser) {
-      const userInfo = {
-        identifier: dbUser.identifier,
-        username: dbUser.username,
-        profileUrl: dbUser.profileUrl,
-      };
-      emailCache.set(email, userInfo);
-      return userInfo;
-    }
-
-    console.log('We are doing an API call');
-    const response = await axios.get(
-      `https://api.github.com/search/users?q=${email}+in:email`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-        },
-      }
-    );
-    // Check if the API call returned any users
-    if (response.data.items.length > 0) {
-      const { login, html_url } = response.data.items[0];
-      // Construct user info from API response
-      const userInfo: UserInfo = {
-        identifier: login,
-        username: login,
-        profileUrl: html_url,
-      };
-      // Cache this user info for future reference
-      emailCache.set(email, userInfo);
-      // Set the user in the database
-      await prisma.contributor.create({
-        data: {
-          identifier: login,
-          username: login,
-          email: email,
-          profileUrl: html_url,
-        },
-      });
-      return userInfo;
-    }
-  } catch (error) {
-    // Log any errors during the API call
-    console.error(`Failed to fetch user info for email: ${email}`, error);
-  }
-
-  // If user info can't be resolved, return a fallback with the email as the identifier
-  const fallbackInfo: UserInfo = {
-    identifier: email,
-    username: 'Unknown Username',
-    profileUrl: 'Unknown Profile',
-  };
-  // Set the fallback info in the database, this way no unnecessary API calls will be made
-  await prisma.contributor.create({
-    data: {
-      identifier: email,
-      email: email,
+  // Query database for existing user
+  dbUser = await prisma.contributor.findFirst({
+    where: {
+      OR: [{ email: author_email }, ...(username ? [{ username }] : [])],
     },
   });
-  // Cache the fallback info as well
-  emailCache.set(email, fallbackInfo);
-  return fallbackInfo;
+
+  if (dbUser) {
+    // If user exists, check lastUpdated for refresh
+    const TWENTY_FOUR_HOURS = 60 * 60 * 24 * 1000;
+    const twentyFourHoursAgo = Date.now() - TWENTY_FOUR_HOURS;
+
+    if (!isNoReply && dbUser.updatedAt.getTime() < twentyFourHoursAgo) {
+      console.log('Fetching updated profile from GitHub...');
+      try {
+        const response = await axios.get(
+          `https://api.github.com/search/users?q=${author_email}+in:email`,
+          { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } }
+        );
+
+        if (response.data.items.length > 0) {
+          const { login, html_url } = response.data.items[0];
+
+          // Update the user in the database
+          dbUser = await prisma.contributor.update({
+            where: { id: dbUser.id },
+            data: {
+              username: login,
+              email: author_email,
+              profileUrl: html_url,
+              updatedAt: new Date(),
+            },
+          });
+
+          console.log(dbUser, 'dbUser updated from GitHub');
+          usersCache.set(author_email, dbUser);
+          if (username) usersCache.set(username, dbUser);
+          return dbUser;
+        }
+      } catch (error: any) {
+        console.error(
+          error,
+          'Failed to fetch GitHub user for email:',
+          author_email
+        );
+        console.error(error.response?.data?.message || error.message);
+      }
+    }
+
+    // Cache and return the user
+    usersCache.set(author_email, dbUser);
+    if (username) usersCache.set(username, dbUser);
+    return dbUser;
+  }
+
+  // Fetch from GitHub if necessary
+  if (!isNoReply) {
+    try {
+      const response = await axios.get(
+        `https://api.github.com/search/users?q=${author_email}+in:email`,
+        { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } }
+      );
+
+      if (response.data.items.length > 0) {
+        const { login, html_url } = response.data.items[0];
+
+        dbUser = await prisma.contributor.upsert({
+          where: { username: login }, // Match by unique username
+          update: {
+            email: author_email, // Update email if it exists
+            profileUrl: html_url,
+            updatedAt: new Date(),
+          },
+          create: {
+            username: login,
+            email: author_email,
+            profileUrl: html_url,
+          },
+        });
+
+        usersCache.set(author_email, dbUser);
+        usersCache.set(login, dbUser);
+        return dbUser;
+      }
+    } catch (error: any) {
+      console.error(
+        error,
+        'Failed to fetch GitHub user for email:',
+        author_email
+      );
+      console.error(error.response.data.message);
+      // TODO: Handle API limits and not public users
+      console.error(`Failed to fetch GitHub user for email: ${author_email}`);
+      if (error.response.data.message.includes('API rate limit exceeded')) {
+        // if we have hit the API rate limit, we should indicate our program that we need to wait for a while
+      } else {
+        throw new Error('Failed to fetch GitHub user for email.');
+      }
+    }
+  }
+  // Create a new user in the database
+  dbUser = await prisma.contributor.create({
+    data: isNoReply
+      ? { username, profileUrl: `https://github.com/${username}` }
+      : { email: author_email },
+  });
+  console.log(dbUser, 'dbUser from here 2.75');
+  // Add to cache
+  usersCache.set(author_email, dbUser);
+  if (username) usersCache.set(username, dbUser);
+  console.log(dbUser, 'dbUser from here 3');
+  return dbUser;
 }
 
 // Function to generate a leaderboard for contributors based on their commits in a repository
-export const generateLeaderboard = async (repoUrl: string) => {
-  // Extract the repository name from the URL
-  const repoName =
-    repoUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
-  // Build the path to where the repository is stored
-  const repoPath = path.join(REPO_BASE_PATH, repoName);
-  // Initialize a git interface pointing to the repository path
+export const generateLeaderboard = async (dbRepository: any) => {
+  const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
   const git = simpleGit(repoPath);
-  // Cache to store user information to prevent redundant API calls
-  const emailCache = new Map();
+
+  const usersCache = new Map();
+  const repositoryContributorCache = new Map();
 
   try {
-    // Fetch the commit log from the git repository
     const log = await git.log();
-    // Map to hold the leaderboard data
-    const leaderboard = new Map();
 
-    // Process each commit in the log
-    for (const { author_email, author_name } of log.all) {
-      // Let's skip commits without an email or name
-      if (!author_email || !author_name) {
+    for (const { author_email } of log.all) {
+      // Let's skip commits without an email
+      if (!author_email) {
         continue;
       }
-      // Resolve user information based on email and name, using the cache
-      const { identifier, username, profileUrl } = await resolveUserInfo(
-        author_email,
-        author_name,
-        emailCache
-      );
-      // Check if the contributor already exists in the leaderboard
-      const leaderboardEntry = leaderboard.get(identifier) || {
-        commitCount: 0,
-        username,
-        email: author_email || '',
-        profileUrl,
-      };
 
-      // Increment the commit count for this contributor
-      leaderboardEntry.commitCount++;
-      // Update the leaderboard with the new entry
-      leaderboard.set(identifier, leaderboardEntry);
+      const dbUser = await getDbUser(author_email, usersCache);
+      console.log(dbUser, 'dbUser');
+      if (repositoryContributorCache.has(dbUser.id)) {
+        repositoryContributorCache.set(dbUser.id, {
+          id: dbUser.id,
+          commitCount:
+            repositoryContributorCache.get(dbUser.id).commitCount + 1,
+        });
+      } else {
+        repositoryContributorCache.set(dbUser.id, {
+          id: dbUser.id,
+          commitCount: 1,
+        });
+      }
     }
 
-    // Convert the leaderboard map to an array and sort it by commit count in descending order
-    return Array.from(leaderboard.values()).sort(
+    await prisma
+      .$transaction(
+        Array.from(repositoryContributorCache.values()).map((contributor) =>
+          prisma.repositoryContributor.upsert({
+            where: {
+              repositoryId_contributorId: {
+                repositoryId: dbRepository.id,
+                contributorId: contributor.id,
+              },
+            },
+            update: { commitCount: contributor.commitCount },
+            create: {
+              contributorId: contributor.id,
+              repositoryId: dbRepository.id,
+              commitCount: contributor.commitCount,
+            },
+          })
+        )
+      )
+      .catch((error) => {
+        console.error('Transaction failed: ', error);
+        // Handle specific errors or rethrow if necessary
+        throw error;
+      });
+
+    const leaderboard = Array.from(repositoryContributorCache.values()).sort(
       (a, b) => b.commitCount - a.commitCount
     );
+
+    return leaderboard;
   } catch (error: any) {
     // Log any errors that occur during the leaderboard generation
     console.error(`Error generating leaderboard: ${error.message}`);
     // Rethrow the error to indicate failure
     throw new Error(`Failed to generate leaderboard: ${error.message}`);
   }
+};
+
+export const getLeaderboardForRepository = async (dbRepository: any) => {
+  const leaderboard = await prisma.repositoryContributor.findMany({
+    where: { repositoryId: dbRepository.id },
+    include: { contributor: true },
+    orderBy: { commitCount: 'desc' },
+  });
+
+  return {
+    repository: dbRepository.url,
+    top_contributors: leaderboard.map(({ contributor, commitCount }) => {
+      return {
+        username: contributor.username,
+        profileUrl: contributor.profileUrl,
+        commitCount: commitCount,
+        email: contributor.email,
+      };
+    }),
+  };
 };

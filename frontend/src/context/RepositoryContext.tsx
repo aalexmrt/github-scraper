@@ -1,11 +1,11 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchRepositoryJobs, Job } from '@/services/repositoryService';
+import { fetchRepositories, Repository } from '@/services/repositoryService';
 
 // Define the context type
 interface RepositoryContextType {
-  jobs: Job[] | undefined;
+  repositories: Repository[] | undefined;
   isLoading: boolean;
   isError: boolean;
   selectedRepo: string | null;
@@ -40,29 +40,31 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isRefetching, setIsRefetching] = useState(false);
 
   const {
-    data: jobs,
+    data: repositories,
     refetch,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['repositoryJobs'],
-    queryFn: fetchRepositoryJobs,
+    queryKey: ['repositories'],
+    queryFn: fetchRepositories,
     refetchInterval: isRefetching ? 2000 : false, // Automatically refetch every 2 seconds if `isRefetching` is true
   });
 
   // TODO: Implement websocket connection to enhance the user experience
   // Check for queued jobs and toggle refetching
+
   useEffect(() => {
-    const hasQueuedJobs = jobs?.some(
-      (job) => job.status === 'waiting' || job.status === 'active'
+    const hasQueuedRepositories = repositories?.some(
+      (repository: any) =>
+        repository.state === 'pending' || repository.state === 'in_progress'
     );
 
-    if (hasQueuedJobs && !isRefetching) {
+    if (hasQueuedRepositories && !isRefetching) {
       setIsRefetching(true); // Start refetching
-    } else if (!hasQueuedJobs && isRefetching) {
+    } else if (!hasQueuedRepositories && isRefetching) {
       setIsRefetching(false); // Stop refetching
     }
-  }, [jobs, isRefetching]);
+  }, [repositories, isRefetching]);
   // Function to trigger a manual refresh of jobs
   const refreshJobs = async () => {
     await refetch();
@@ -71,7 +73,7 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <RepositoryContext.Provider
       value={{
-        jobs,
+        repositories,
         isLoading,
         isError,
         selectedRepo,

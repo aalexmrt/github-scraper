@@ -5,12 +5,27 @@ A scalable GitHub repository scraper that analyzes commit history and generates 
 ## Features
 
 ### Backend
-- **Fastify Server**: Single endpoint for repository processing and leaderboard generation.
-- **Asynchronous Processing**: Uses Bull and Redis for task queue management.
-- **Efficient Cloning**: Bare cloning and incremental updates with `simple-git`.
-- **Caching**: PostgreSQL and Prisma for caching contributor data and reducing redundant API calls.
+
+- **Fastify Server**:
+  - Implements multiple endpoints:
+    - `/health`: Check server status.
+    - `/leaderboard` (GET): Retrieve the leaderboard for a processed repository.
+    - `/leaderboard` (POST): Submit a repository for processing.
+    - `/repositories`: List all repositories in the database.
+  - Handles repository states (`pending`, `in_progress`, `failed`, `completed`) dynamically.
+- **Efficient Repository Management**:
+  - Bare cloning and incremental updates using `simple-git`.
+  - Normalizes repository URLs for consistent processing.
+- **Task Queue**:
+  - Asynchronous repository processing with Bull and Redis.
+- **Database Integration**:
+  - PostgreSQL for persistent caching of repositories and contributors.
+  - Prisma ORM for structured and efficient database queries.
+- **Error Handling**:
+  - Graceful handling of invalid repository URLs, missing data, and processing failures.
 
 ### Frontend
+
 - **Modern UI**: Built with Next.js and styled with Tailwind CSS.
 - **Leaderboard Display**: Interactive table showing contributor rankings and commit counts.
 - **Repository Management**: Add and monitor GitHub repositories through a responsive interface.
@@ -22,6 +37,7 @@ A scalable GitHub repository scraper that analyzes commit history and generates 
 ### Prerequisites
 
 Ensure the following tools are installed on your machine:
+
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 - [Git](https://git-scm.com/)
 
@@ -31,13 +47,16 @@ Ensure the following tools are installed on your machine:
    ```bash
    git clone https://github.com/aalexmrt/github-scraper
    cd github-scraper
+   ```
 2. **Set Up Environment Variables**:
+
    - A sample `.env.example` file is provided in the `backend` folder. You can copy this file to create your `.env` file.
      ```bash
      cp backend/.env.example backend/.env
      ```
    - Open the newly created `backend/.env` file and replace `<your_github_personal_access_token>` with your GitHub Personal Access Token.
      Example `backend/.env` file:
+
      ```env
      # Database connection string
      DATABASE_URL=postgresql://user:password@db:5432/github_scraper
@@ -53,15 +72,18 @@ Ensure the following tools are installed on your machine:
    - **Note**: The `backend/.env.example` file includes placeholder values to guide you. Ensure the actual `.env` file is not shared or committed to version control to keep sensitive data secure.
 
    - If you don't have a GitHub Personal Access Token yet, you can create one:
+
      1. Go to [GitHub Developer Settings](https://github.com/settings/tokens).
      2. Click "Generate new token" (classic).
      3. Select the necessary scopes (`read:user` and `repo` for private repository access if required).
      4. Copy the token and add it to the `GITHUB_TOKEN` variable in your `backend/.env` file.
 
+     ```
 
      ```
 
 3. **Start Services**:
+
    - Run the following command to build and start all services using Docker Compose:
      ```bash
      docker-compose up --build
@@ -84,57 +106,97 @@ Ensure the following tools are installed on your machine:
 
 ## Usage
 
-### Backend: Accessing the `/leaderboard` Endpoint
+### Submit a Repository for Processing
 
-You can use the `/leaderboard` endpoint to process a GitHub repository and retrieve the leaderboard of contributors.
+**Endpoint**: `/leaderboard`
 
-#### Endpoint Details
-- **Method**: `GET`
-- **URL**: `http://localhost:3000/leaderboard`
+**Method**: `POST`
 
 #### Query Parameters
-| Parameter | Type   | Description                         | Required |
-|-----------|--------|-------------------------------------|----------|
-| `repoUrl` | string | The URL of the GitHub repository.  | Yes      |
+
+| Parameter | Type   | Description                          | Required |
+| --------- | ------ | ------------------------------------ | -------- |
+| `repoUrl` | string | The GitHub repository URL to process | Yes      |
+
+#### Headers
+
+| Header          | Type   | Description                           | Required |
+| --------------- | ------ | ------------------------------------- | -------- |
+| `Authorization` | string | Bearer token for private repositories | No       |
 
 #### Example Request
-Using `curl`:
+
+```bash
+curl -X POST "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
+```
+
+### Responses
+
+#### Repository Added for Processing
+
+```json
+{ "message": "Repository is being processed." }
+```
+
+#### Repository Already Processing
+
+```json
+{ "message": "Repository still processing." }
+```
+
+#### Processing Completed
+
+```json
+{
+  "message": "Repository processed successfully.",
+  "lastProcessedAt": "2024-11-28T12:00:00Z"
+}
+```
+
+### Retrieve Leaderboard for a Processed Repository
+
+**Endpoint**: `/leaderboard`
+
+**Method**: `GET`
+
+**URL**: `http://localhost:3000/leaderboard`
+
+**Query Parameters**
+
+| Parameter | Type   | Description                          | Required |
+| --------- | ------ | ------------------------------------ | -------- |
+| `repoUrl` | string | The GitHub repository URL to process | Yes      |
+
+#### Example Request
+
 ```bash
 curl -X GET "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
 ```
 
 #### Example Responses
-##### Processing in Progress
+
+##### Repository Not Found
+
 ```json
 {
-  "message": "Repository is being processed."
+  "error": "Repository not found, remember to submit for processing first."
 }
 ```
 
-##### Processing Completed
-```json
-{
-    "leaderboard": [
-        {
-            "commitCount": 43,
-            "username": null,
-            "email": "alexmartinez.mm98@gmail.com",
-            "profileUrl": null
-        },
-        {
-            "commitCount": 2,
-            "username": "aalexmrt",
-            "email": "67644735+aalexmrt@users.noreply.github.com",
-            "profileUrl": "https://github.com/aalexmrt"
-        }
-    ]
-}
-```
+##### Leaderboard Response
 
-##### Error
 ```json
 {
-  "error": "Failed to process the leaderboard request."
+  "repository": "https://github.com/aalexmrt/github-scraper",
+  "top_contributors": [
+    {
+      "identifier": "aalexmrt",
+      "username": "aalexmrt",
+      "email": "67644735+aalexmrt@users.noreply.github.com",
+      "profileUrl": "https://github.com/aalexmrt",
+      "commitCount": 23
+    }
+  ]
 }
 ```
 
@@ -142,28 +204,38 @@ curl -X GET "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexm
 
 The application frontend provides an interface to interact with the backend, making it easier to process repositories and view leaderboards.
 
-1. **Add a Repository**  
-   - Open the application frontend at `http://localhost:4000`.  
+1. **Add a Repository**
+
+   - Open the application frontend at `http://localhost:4000`.
    - Use the **Add Repository** form to submit a GitHub repository URL for processing.
 
-2. **Monitor Repository Processing**  
-   - Navigate to the **Processed Repositories** section to view the status of your repositories:  
-     - **Processing**: The repository is currently being analyzed.  
-     - **On Queue**: The repository is waiting for processing.  
-     - **Completed**: The repository has been successfully processed.  
+2. **Monitor Repository Processing**
 
-3. **View Contributor Leaderboard**  
+   - Navigate to the **Processed Repositories** section to view the status of your repositories:
+     - **Processing**: The repository is currently being analyzed.
+     - **On Queue**: The repository is waiting for processing.
+     - **Completed**: The repository has been successfully processed.
+
+3. **View Contributor Leaderboard**
    - For completed repositories, click the **Leaderboard** button to view a detailed contributor leaderboard.
 
-<img width="1728" alt="Screenshot 2024-11-24 at 5 17 49 PM" src="https://github.com/user-attachments/assets/97ac4397-2556-44c5-89df-011133f6b455">
-<img width="1728" alt="Screenshot 2024-11-24 at 5 18 03 PM" src="https://github.com/user-attachments/assets/200d80e1-59ed-4821-8a60-9a0f8807096f">
+<img width="1728" alt="Screenshot 2024-11-28 at 2 54 21 PM" src="https://github.com/user-attachments/assets/e75a9997-405f-4b2c-83e6-6f24a28c1a20">
+<img width="1728" alt="Screenshot 2024-11-28 at 2 54 28 PM" src="https://github.com/user-attachments/assets/7ef773a2-39bc-4906-879d-c32f045090e9">
+<img width="1728" alt="Screenshot 2024-11-28 at 2 54 38 PM" src="https://github.com/user-attachments/assets/49417023-aab0-4edf-8158-91afdecbd138">
 
 
 ## **Next Steps**
 
 ### **Backend**
-- [ ] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
-- [ ] Update the /leaderboard endpoint to split responsibilities by creating a new endpoint for processing and retrieving the leaderboard, and include the repository URL in the response.
+
+- [X] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
+- [X] Update the /leaderboard endpoint to split responsibilities by creating a new endpoint for processing and retrieving the leaderboard, and include the repository URL in the response.
+- [ ] Improve handling API limits error and optimize the current flow.
+- [ ] Add retries to failed processed repositories
+- [ ] Continue improving general optimization and performance
+- [ ] Escale horizontally with multiple workers and with smart queues management 
 
 ### **Frontend**
-- [ ] Add a form to input a repository URL and optional GitHub token.
+
+- [X] Add a form to input a repository URL and optional GitHub token.
+- [ ] Improve UI...
