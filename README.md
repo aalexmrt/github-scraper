@@ -147,7 +147,6 @@ curl -X POST "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalex
 #### Processing Completed
 
 ```json
-Processing Completed
 {
   "message": "Repository processed successfully.",
   "lastProcessedAt": "2024-11-28T12:00:00Z"
