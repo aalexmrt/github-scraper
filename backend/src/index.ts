@@ -47,6 +47,8 @@ app.post('/leaderboard', async (request, reply) => {
       await repoQueue.add({ dbRepository });
     }
 
+    await repoQueue.add({ dbRepository });
+
     switch (dbRepository.state) {
       case 'pending':
       case 'in_progress':
@@ -131,6 +133,17 @@ app.get('/repositories', async (req, reply) => {
     console.error('Failed to fetch repository jobs:', error);
     reply.status(500).send({ error: 'Failed to fetch repository jobs' });
   }
+});
+
+app.post('/delete', async (request, reply) => {
+  await prisma.repository.delete({
+    where: {
+      url: 'https://github.com/infisical/infisical',
+    },
+  });
+  return reply
+    .status(200)
+    .send({ message: 'Repository deleted successfully.' });
 });
 
 // Hook to disconnect Prisma when the server shuts down
