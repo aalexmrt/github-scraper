@@ -36,7 +36,7 @@ export function LeaderBoard({
     data: contributors,
     isLoading,
     isError,
-  } = useQuery({
+  } = useQuery<Contributor[]>({
     queryKey: ['leaderboard', repoUrl],
     queryFn: () => getRepositoryLeaderboard(repoUrl),
   });
