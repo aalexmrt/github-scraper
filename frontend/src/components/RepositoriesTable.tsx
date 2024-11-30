@@ -18,7 +18,10 @@ import { LeaderBoard } from './LeaderBoard';
 import { useRepositoryContext } from '../context/RepositoryContext';
 import { Repository } from '../services/repositoryService';
 
-const statusConfig: Record<Repository['state'], { label: string; color: string }> = {
+const statusConfig: Record<
+  Repository['state'],
+  { label: string; color: string }
+> = {
   failed: { label: 'Failed', color: 'bg-red-500 text-red-100' },
   in_progress: { label: 'Processing', color: 'bg-yellow-500 text-yellow-100' },
   pending: { label: 'On Queue', color: 'bg-blue-500 text-blue-100' },
@@ -40,10 +43,10 @@ export function RepositoriesTable() {
     setSelectedRepo(repoUrl);
   };
 
-  const filteredRepositories = repositories?.filter((repository:any) =>
-    repository.url.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+  const filteredRepositories =
+    repositories?.filter((repository: any) =>
+      repository.url.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
 
   if (selectedRepo) {
     return (
@@ -112,41 +115,43 @@ export function RepositoriesTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRepositories?.map((repo) => (
-                <TableRow key={repo.id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">
-                    <a
-                      className="flex items-center space-x-2"
-                      href={repo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <GitBranch className="w-4 h-4" />
-                      <span>{repo.url}</span>
-                    </a>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`${
-                        statusConfig[repo.state].color
-                      } font-semibold`}
-                    >
-                      {statusConfig[repo.state].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleRepoClick(repo.url)}
-                      disabled={repo.state !== 'completed'}
-                    >
-                      Leaderboard
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredRepositories &&
+                filteredRepositories.length > 0 &&
+                filteredRepositories.map((repo: Repository) => (
+                  <TableRow key={repo.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">
+                      <a
+                        className="flex items-center space-x-2"
+                        href={repo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <GitBranch className="w-4 h-4" />
+                        <span>{repo.url}</span>
+                      </a>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`${
+                          statusConfig[repo.state].color
+                        } font-semibold`}
+                      >
+                        {statusConfig[repo.state].label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleRepoClick(repo.url)}
+                        disabled={repo.state !== 'completed'}
+                      >
+                        Leaderboard
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </div>
