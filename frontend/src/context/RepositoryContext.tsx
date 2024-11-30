@@ -5,7 +5,7 @@ import { fetchRepositories, Repository } from '@/services/repositoryService';
 
 // Define the context type
 interface RepositoryContextType {
-  repositories: Repository[] | undefined;
+  repositories: Repository[];
   isLoading: boolean;
   isError: boolean;
   selectedRepo: string | null;
@@ -40,7 +40,7 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isRefetching, setIsRefetching] = useState(false);
 
   const {
-    data: repositories,
+    data: repositories = [],
     refetch,
     isLoading,
     isError,
