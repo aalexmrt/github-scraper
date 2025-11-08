@@ -1,12 +1,15 @@
 # Use Node.js LTS version
 FROM node:22.11.0
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Set working directory
 WORKDIR /app
 
 # Install dependencies
-COPY package*.json ./
-RUN npm install --force
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
 # Copy application files
 COPY . .
@@ -15,4 +18,4 @@ COPY . .
 EXPOSE 3000
 
 # Run the development server
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]

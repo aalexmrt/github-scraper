@@ -1,8 +1,7 @@
 import simpleGit from 'simple-git';
-import fs from 'fs';
-import path from 'path';
 import axios from 'axios';
 import prisma from '../utils/prisma';
+import { createStorageAdapter } from './storage/storageFactory';
 
 export interface DbRepository {
   id: number;
@@ -15,35 +14,34 @@ export interface DbRepository {
   updatedAt: Date;
 }
 
-const REPO_BASE_PATH = '/data/repos';
-
-// Ensure the base directory exists
-if (!fs.existsSync(REPO_BASE_PATH)) {
-  fs.mkdirSync(REPO_BASE_PATH, { recursive: true });
-}
+// Initialize storage adapter (filesystem for local, R2 for production)
+const storage = createStorageAdapter();
 
 export const syncRepository = async (
   dbRepository: DbRepository,
   token: string | null = null
 ): Promise<string> => {
-  const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
-  const git = simpleGit();
-  console.log(dbRepository.url, 'this is the url');
-  const authenticatedRepoUrl = dbRepository.url.replace(
-    'https://github.com',
-    `https://${token}@github.com`
-  );
-  console.log(authenticatedRepoUrl, 'this is the authenticated repo url');
+  const repoPath = dbRepository.pathName;
+  
   try {
-    if (fs.existsSync(repoPath)) {
-      await git.cwd(repoPath).fetch();
+    // Ensure storage is ready
+    await storage.ensureDirectory();
+
+    const authenticatedRepoUrl = dbRepository.url.replace(
+      'https://github.com',
+      `https://${token}@github.com`
+    );
+
+    const repoExists = await storage.exists(repoPath);
+
+    if (repoExists) {
+      // Repository exists, fetch updates
+      await storage.fetchUpdates(repoPath);
       return `Repository ${dbRepository.pathName} updated successfully.`;
     } else {
-      const cloneUrl = authenticatedRepoUrl
-        ? authenticatedRepoUrl
-        : dbRepository.url;
-      console.log(cloneUrl, 'this is the clone url');
-      await git.clone(cloneUrl, repoPath, ['--bare']); // Clone the repository in a bare format because we don't need the working directory
+      // Clone new repository
+      const cloneUrl = authenticatedRepoUrl || dbRepository.url;
+      await storage.cloneFromGit(cloneUrl, repoPath);
       return `Repository ${dbRepository.pathName} cloned successfully.`;
     }
   } catch (error: any) {
@@ -65,7 +63,11 @@ export const syncRepository = async (
   }
 };
 
-async function getDbUser(author_email: string, usersCache: Map<string, any>) {
+async function getDbUser(
+  author_email: string,
+  usersCache: Map<string, any>,
+  githubToken: string | null = null
+) {
   let dbUser = null;
   // Determine username from no-reply email, if applicable
   const isNoReply = author_email.endsWith('@users.noreply.github.com');
@@ -95,9 +97,14 @@ async function getDbUser(author_email: string, usersCache: Map<string, any>) {
     if (!isNoReply && dbUser.updatedAt.getTime() < twentyFourHoursAgo) {
       console.log('Fetching updated profile from GitHub...');
       try {
+        const token = githubToken || process.env.GITHUB_TOKEN;
+        if (!token || token === 'your_token_optional') {
+          console.warn('No valid GitHub token available for API call');
+          return dbUser;
+        }
         const response = await axios.get(
           `https://api.github.com/search/users?q=${author_email}+in:email`,
-          { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (response.data.items.length > 0) {
@@ -138,9 +145,20 @@ async function getDbUser(author_email: string, usersCache: Map<string, any>) {
   // Fetch from GitHub if necessary
   if (!isNoReply) {
     try {
+      const token = githubToken || process.env.GITHUB_TOKEN;
+      if (!token || token === 'your_token_optional') {
+        console.warn('No valid GitHub token available for API call');
+        // Create user with email only if no token available
+        dbUser = await prisma.contributor.create({
+          data: { email: author_email },
+        });
+        usersCache.set(author_email, dbUser);
+        return dbUser;
+      }
+      
       const response = await axios.get(
         `https://api.github.com/search/users?q=${author_email}+in:email`,
-        { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.items.length > 0) {
@@ -170,13 +188,36 @@ async function getDbUser(author_email: string, usersCache: Map<string, any>) {
         'Failed to fetch GitHub user for email:',
         author_email
       );
-      console.error(error.response.data.message);
-      // TODO: Handle API limits and not public users
-      console.error(`Failed to fetch GitHub user for email: ${author_email}`);
-      if (error.response.data.message.includes('API rate limit exceeded')) {
+      const errorMessage = error.response?.data?.message || error.message;
+      const statusCode = error.response?.status;
+      console.error(errorMessage);
+      
+      // Handle different error cases gracefully
+      if (statusCode === 401 || errorMessage.includes('Bad credentials')) {
+        // Invalid token - create user with email only
+        console.warn('Invalid GitHub token, creating user with email only');
+        dbUser = await prisma.contributor.create({
+          data: { email: author_email },
+        });
+        usersCache.set(author_email, dbUser);
+        return dbUser;
+      } else if (errorMessage.includes('API rate limit exceeded')) {
         // if we have hit the API rate limit, we should indicate our program that we need to wait for a while
+        // For now, create user with email only
+        console.warn('GitHub API rate limit exceeded, creating user with email only');
+        dbUser = await prisma.contributor.create({
+          data: { email: author_email },
+        });
+        usersCache.set(author_email, dbUser);
+        return dbUser;
       } else {
-        throw new Error('Failed to fetch GitHub user for email.');
+        // Other errors - create user with email only instead of failing completely
+        console.warn(`GitHub API error (${statusCode}): ${errorMessage}, creating user with email only`);
+        dbUser = await prisma.contributor.create({
+          data: { email: author_email },
+        });
+        usersCache.set(author_email, dbUser);
+        return dbUser;
       }
     }
   }
@@ -195,8 +236,11 @@ async function getDbUser(author_email: string, usersCache: Map<string, any>) {
 }
 
 // Function to generate a leaderboard for contributors based on their commits in a repository
-export const generateLeaderboard = async (dbRepository: any) => {
-  const repoPath = path.join(REPO_BASE_PATH, dbRepository.pathName);
+export const generateLeaderboard = async (
+  dbRepository: any,
+  githubToken: string | null = null
+) => {
+  const repoPath = await storage.getLocalPath(dbRepository.pathName);
   const git = simpleGit(repoPath);
 
   const usersCache = new Map();
@@ -211,7 +255,7 @@ export const generateLeaderboard = async (dbRepository: any) => {
         continue;
       }
 
-      const dbUser = await getDbUser(author_email, usersCache);
+      const dbUser = await getDbUser(author_email, usersCache, githubToken);
       console.log(dbUser, 'dbUser');
       if (repositoryContributorCache.has(dbUser.id)) {
         repositoryContributorCache.set(dbUser.id, {

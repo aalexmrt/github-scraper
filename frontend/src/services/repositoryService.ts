@@ -1,5 +1,8 @@
 import axios from 'axios';
 
+// Configure axios to include credentials (cookies) in all requests
+axios.defaults.withCredentials = true;
+
 // Define the Job type
 export interface Repository {
   id: string;

@@ -1,5 +1,14 @@
+# NOTE: This file is NOT currently used.
+# The project uses docker-compose.services.yml instead (via start-services.sh)
+# This file is kept for reference but may contain outdated configuration.
+#
+# Current setup:
+# - Backend services run in Docker (via docker-compose.services.yml)
+# - Frontend runs locally (not in Docker)
+# - Use ./start-services.sh to start backend services
+
 services:
-  app:
+  backend:
     build:
       context: ./backend
     ports:
@@ -13,6 +22,15 @@ services:
       - NODE_ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # GitHub OAuth Configuration
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:4000}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:3000}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      # Database Configuration
+      - DATABASE_URL=postgresql://user:password@db:5432/github_scraper
     depends_on:
       - db
       - redis
@@ -29,8 +47,9 @@ services:
     command: npm run dev
     environment:
       - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     depends_on:
-      - app
+      - backend
 
   db:
     image: postgres:15 # Specify an exact version of PostgreSQL
@@ -58,8 +77,10 @@ services:
       - NODE_ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Database Configuration
+      - DATABASE_URL=postgresql://user:password@db:5432/github_scraper
     depends_on:
-      - app
+      - backend
       - redis
     restart: always
 
