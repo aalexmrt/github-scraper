@@ -1,7 +1,7 @@
-import prisma from '../src/utils/prisma';
-import { repoQueue } from '../src/services/queueService';
-import { normalizeRepoUrl } from '../src/utils/normalizeUrl';
-import { isValidGitHubUrl } from '../src/utils/isValidGitHubUrl';
+import prisma from './prisma';
+import { repoQueue } from '../services/queueService';
+import { normalizeRepoUrl } from './normalizeUrl';
+import { isValidGitHubUrl } from './isValidGitHubUrl';
 
 // Demo repositories - small, resource-friendly repos
 export const DEMO_REPOS = [
