@@ -413,6 +413,24 @@ The demo repository population is **idempotent** and can be run safely multiple 
    - Useful for testing or manual updates
    - Can be run anytime without side effects
 
+### GitHub Token Usage
+
+The populate script uses `GITHUB_TOKEN` from environment variables if available:
+
+- **With Token** (`GITHUB_TOKEN` set):
+  - ✅ Higher API rate limits (5,000 requests/hour vs 60/hour)
+  - ✅ Better user profile data (usernames, profile URLs)
+  - ✅ More complete leaderboard information
+  - ✅ Recommended for production deployments
+
+- **Without Token** (`GITHUB_TOKEN` not set):
+  - ✅ Still works for public repositories (cloning doesn't require auth)
+  - ⚠️ Lower API rate limits (60 requests/hour)
+  - ⚠️ Limited user profile data (email only, no usernames)
+  - ⚠️ May hit rate limits when processing multiple repos
+
+**Note**: All demo repositories are public, so a token is **optional but highly recommended** for better data quality and rate limits.
+
 ### Environment Variable
 
 Add to your `.env` file:
@@ -420,6 +438,9 @@ Add to your `.env` file:
 ```bash
 # Set to 'true' to automatically populate demo repositories on server startup
 POPULATE_DEMO_REPOS=false  # Set to 'true' for production deployments
+
+# GitHub token (optional but recommended for better rate limits and user data)
+GITHUB_TOKEN=your_github_personal_access_token
 ```
 
 ### Deployment Recommendations
