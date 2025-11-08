@@ -1,150 +1,308 @@
 # GitHub Repository Scraper
 
-A scalable GitHub repository scraper that analyzes commit history and generates a leaderboard of contributors. The project is built with a modern stack for both backend and frontend, featuring asynchronous processing with a task queue.
+A scalable, full-stack application that analyzes GitHub repositories by extracting commit history and generating contributor leaderboards. Built with modern technologies featuring asynchronous processing, real-time status updates, and support for both public and private repositories.
 
-## Features
+## 🎯 Overview
+
+The GitHub Repository Scraper enables users to:
+
+- **Analyze any GitHub repository** (public or private) to identify top contributors
+- **Track commit statistics** and generate comprehensive leaderboards
+- **Monitor processing status** in real-time through an intuitive web interface
+- **Access historical data** with persistent storage and caching
+
+The system uses asynchronous job processing to handle large repositories efficiently, ensuring responsive API responses while processing happens in the background.
+
+## ✨ Features
 
 ### Backend
 
-- **Fastify Server**:
-  - Implements multiple endpoints:
-    - `/health`: Check server status.
-    - `/leaderboard` (GET): Retrieve the leaderboard for a processed repository.
-    - `/leaderboard` (POST): Submit a repository for processing.
-    - `/repositories`: List all repositories in the database.
-  - Handles repository states (`pending`, `in_progress`, `failed`, `completed`) dynamically.
-- **Efficient Repository Management**:
-  - Bare cloning and incremental updates using `simple-git`.
-  - Normalizes repository URLs for consistent processing.
-- **Task Queue**:
-  - Asynchronous repository processing with Bull and Redis.
-- **Database Integration**:
-  - PostgreSQL for persistent caching of repositories and contributors.
-  - Prisma ORM for structured and efficient database queries.
-- **Error Handling**:
-  - Graceful handling of invalid repository URLs, missing data, and processing failures.
+- **🚀 Fastify HTTP Server**
+
+  - RESTful API with multiple endpoints for repository management
+  - `/health` - Server status check
+  - `/leaderboard` (GET) - Retrieve contributor leaderboard
+  - `/leaderboard` (POST) - Submit repository for processing
+  - `/repositories` - List all processed repositories
+  - Dynamic state management (`pending`, `in_progress`, `completed`, `failed`)
+
+- **⚡ Asynchronous Processing**
+
+  - Bull queue system with Redis for job management
+  - Non-blocking API responses
+  - Horizontal scaling support for worker processes
+
+- **🔧 Git Operations**
+
+  - Bare repository cloning (space-efficient)
+  - Incremental updates using `simple-git`
+  - URL normalization (SSH/HTTPS support)
+
+- **💾 Database Integration**
+
+  - PostgreSQL for persistent storage
+  - Prisma ORM for type-safe database queries
+  - Efficient caching of contributors and repositories
+
+- **🔐 Security & Authentication**
+
+  - GitHub Personal Access Token support for private repositories
+  - Secure token handling (not stored, only used per request)
+  - Comprehensive error handling for network and permission issues
+
+- **🌐 GitHub API Integration**
+  - User profile resolution and enrichment
+  - Smart handling of GitHub no-reply emails
+  - Rate limit awareness
 
 ### Frontend
 
-- **Modern UI**: Built with Next.js and styled with Tailwind CSS.
-- **Leaderboard Display**: Interactive table showing contributor rankings and commit counts.
-- **Repository Management**: Add and monitor GitHub repositories through a responsive interface.
+- **🎨 Modern UI**
 
----
+  - Next.js 15 with React 19
+  - Tailwind CSS for styling
+  - Radix UI components for accessibility
+  - Responsive design (desktop and mobile)
 
-## Getting Started
+- **📊 Interactive Features**
+
+  - Repository submission form with private repo support
+  - Real-time status updates (automatic polling)
+  - Searchable repository table
+  - Detailed contributor leaderboard display
+
+- **⚛️ State Management**
+  - React Query for server state
+  - Context API for local UI state
+  - Automatic cache invalidation
+
+## 🏗️ Architecture
+
+The application follows a microservices architecture with clear separation of concerns:
+
+```
+Frontend (Next.js) → Backend API (Fastify) → Worker Process
+                              ↓
+                    PostgreSQL + Redis Queue
+```
+
+- **Frontend**: User interface built with Next.js
+- **Backend API**: Fastify server handling HTTP requests
+- **Worker**: Background process for repository analysis
+- **PostgreSQL**: Persistent data storage
+- **Redis**: Job queue and caching
+
+For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-Ensure the following tools are installed on your machine:
-
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 - [Git](https://git-scm.com/)
+- GitHub Personal Access Token (optional, for private repositories)
 
 ### Installation
 
-1. **Clone the Repository**:
+1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/aalexmrt/github-scraper
    cd github-scraper
    ```
-2. **Set Up Environment Variables**:
 
-   - A sample `.env.example` file is provided in the `backend` folder. You can copy this file to create your `.env` file.
-     ```bash
-     cp backend/.env.example backend/.env
-     ```
-   - Open the newly created `backend/.env` file and replace `<your_github_personal_access_token>` with your GitHub Personal Access Token.
-     Example `backend/.env` file:
+2. **Set Up Environment Variables**
 
-     ```env
-     # Database connection string
-     DATABASE_URL=postgresql://user:password@db:5432/github_scraper
+   Create a `.env` file in the `backend` directory:
 
-     # Redis connection settings
-     REDIS_HOST=redis
-     REDIS_PORT=6379
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
 
-     # GitHub API Personal Access Token
-     GITHUB_TOKEN=<your_github_personal_access_token>
-     ```
+   Edit `backend/.env` with your configuration:
 
-   - **Note**: The `backend/.env.example` file includes placeholder values to guide you. Ensure the actual `.env` file is not shared or committed to version control to keep sensitive data secure.
+   ```env
+   # Database connection string
+   DATABASE_URL=postgresql://user:password@db:5432/github_scraper
 
-   - If you don't have a GitHub Personal Access Token yet, you can create one:
+   # Redis connection settings
+   REDIS_HOST=redis
+   REDIS_PORT=6379
 
-     1. Go to [GitHub Developer Settings](https://github.com/settings/tokens).
-     2. Click "Generate new token" (classic).
-     3. Select the necessary scopes (`read:user` and `repo` for private repository access if required).
-     4. Copy the token and add it to the `GITHUB_TOKEN` variable in your `backend/.env` file.
+   # GitHub API Personal Access Token (optional but recommended)
+   GITHUB_TOKEN=your_github_personal_access_token
+   ```
 
-     ```
+   **Getting a GitHub Token:**
 
-     ```
+   1. Go to [GitHub Developer Settings](https://github.com/settings/tokens)
+   2. Click "Generate new token" (classic)
+   3. Select scopes: `read:user` and `repo` (for private repositories)
+   4. Copy the token and add it to `GITHUB_TOKEN` in your `.env` file
 
-3. **Start Services**:
+3. **Start Services**
 
-   - Run the following command to build and start all services using Docker Compose:
-     ```bash
-     docker-compose up --build
-     ```
-   - This will start the backend, frontend, PostgreSQL database, Redis, and the worker service.
+   Build and start all services:
 
-4. **Access the Application**:
-   - **Backend API**: Accessible at `http://localhost:3000`
-     - To verify if the backend is running, you can use the `/health` endpoint:
-       ```bash
-       curl -X GET "http://localhost:3000/health"
-       ```
-       - **Expected Response**:
-         ```json
-         { "message": "Server is running." }
-         ```
-   - **Frontend UI**: Accessible at `http://localhost:4000`
+   ```bash
+   docker-compose up --build
+   ```
 
----
+   This starts:
 
-## Usage
+   - Backend API server (port 3000)
+   - Frontend web application (port 4000)
+   - PostgreSQL database
+   - Redis server
+   - Worker process
 
-### Submit a Repository for Processing
+4. **Verify Installation**
 
-**Endpoint**: `/leaderboard`
+   Check backend health:
 
-**Method**: `POST`
+   ```bash
+   curl http://localhost:3000/health
+   ```
 
-#### Query Parameters
+   Expected response:
 
-| Parameter | Type   | Description                          | Required |
-| --------- | ------ | ------------------------------------ | -------- |
-| `repoUrl` | string | The GitHub repository URL to process | Yes      |
+   ```json
+   { "message": "Server is running." }
+   ```
 
-#### Headers
+   Access the frontend at: `http://localhost:3001`
 
-| Header          | Type   | Description                           | Required |
-| --------------- | ------ | ------------------------------------- | -------- |
-| `Authorization` | string | Bearer token for private repositories | No       |
+### Local Development (Frontend Locally, Backend in Docker)
 
-#### Example Request
+If you prefer to run only the frontend locally while keeping the backend and services (database, Redis, worker) in Docker:
+
+1. **Set Up Environment Variables**
+
+   Create a `.env` file in the project root (or set environment variables):
+
+   ```env
+   # GitHub OAuth Configuration (required for authentication)
+   GITHUB_CLIENT_ID=your_github_client_id
+   GITHUB_CLIENT_SECRET=your_github_client_secret
+
+   # Session Configuration
+   SESSION_SECRET=your-super-secret-session-key-change-in-production
+
+   # Application URLs
+   FRONTEND_URL=http://localhost:3001
+   BACKEND_URL=http://localhost:3000
+
+   # GitHub Personal Access Token (optional)
+   GITHUB_TOKEN=your_github_personal_access_token
+   ```
+
+   **Getting GitHub OAuth Credentials:**
+
+   See [OAUTH_SETUP.md](./OAUTH_SETUP.md) for detailed instructions on setting up GitHub OAuth.
+
+2. **Start Docker Services**
+
+   Start PostgreSQL, Redis, backend API, and worker:
+
+   ```bash
+   docker-compose -f docker-compose.services.yml up -d
+   ```
+
+   Or use the helper script:
+
+   ```bash
+   ./start-services.sh
+   ```
+
+   This starts:
+
+   - PostgreSQL database (port 5432)
+   - Redis server (port 6379)
+   - Backend API server (port 3000)
+   - Worker process (background)
+
+3. **Set Up Frontend Environment**
+
+   Create a `.env.local` file in the `frontend` directory:
+
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:3000
+   ```
+
+4. **Install Frontend Dependencies**
+
+   ```bash
+   cd frontend
+   pnpm install
+   ```
+
+5. **Start Frontend Server**
+
+   ```bash
+   pnpm run dev
+   ```
+
+   The frontend will start on `http://localhost:3001`
+
+6. **Verify Installation**
+
+   - Backend: `curl http://localhost:3000/health`
+   - Frontend: Open `http://localhost:3001` in your browser
+
+**Note**: The backend, database, Redis, and worker all run in Docker. Only the frontend runs locally. Code changes to the backend will be reflected automatically due to volume mounting.
+
+## 📖 Usage
+
+### Using the Web Interface
+
+1. **Add a Repository**
+
+   - Open `http://localhost:3001`
+   - Enter a GitHub repository URL (e.g., `https://github.com/user/repo`)
+   - For private repositories, check "This is a private repository" and enter your GitHub token
+   - Click "Submit"
+
+2. **Monitor Processing**
+
+   - View all repositories in the "Processed Repositories" table
+   - Status badges indicate current state:
+     - 🔵 **On Queue**: Waiting for processing
+     - 🟡 **Processing**: Currently being analyzed
+     - 🟢 **Completed**: Successfully processed
+     - 🔴 **Failed**: Processing encountered an error
+
+3. **View Leaderboard**
+   - Click the "Leaderboard" button for completed repositories
+   - See contributors ranked by commit count
+   - View contributor details: username, email, profile URL, and commit count
+
+### Using the API
+
+#### Submit a Repository for Processing
+
+**Endpoint**: `POST /leaderboard`
+
+**Query Parameters:**
+
+- `repoUrl` (required): GitHub repository URL
+
+**Headers:**
+
+- `Authorization` (optional): `Bearer <token>` for private repositories
+
+**Example:**
 
 ```bash
 curl -X POST "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
 ```
 
-### Responses
-
-#### Repository Added for Processing
+**Response (202 Accepted):**
 
 ```json
 { "message": "Repository is being processed." }
 ```
 
-#### Repository Already Processing
-
-```json
-{ "message": "Repository still processing." }
-```
-
-#### Processing Completed
+**Response (200 OK - Already Completed):**
 
 ```json
 {
@@ -153,44 +311,27 @@ curl -X POST "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalex
 }
 ```
 
-### Retrieve Leaderboard for a Processed Repository
+#### Retrieve Leaderboard
 
-**Endpoint**: `/leaderboard`
+**Endpoint**: `GET /leaderboard`
 
-**Method**: `GET`
+**Query Parameters:**
 
-**URL**: `http://localhost:3000/leaderboard`
+- `repoUrl` (required): GitHub repository URL
 
-**Query Parameters**
-
-| Parameter | Type   | Description                          | Required |
-| --------- | ------ | ------------------------------------ | -------- |
-| `repoUrl` | string | The GitHub repository URL to process | Yes      |
-
-#### Example Request
+**Example:**
 
 ```bash
-curl -X GET "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
+curl "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexmrt/github-scraper"
 ```
 
-#### Example Responses
-
-##### Repository Not Found
-
-```json
-{
-  "error": "Repository not found, remember to submit for processing first."
-}
-```
-
-##### Leaderboard Response
+**Response:**
 
 ```json
 {
   "repository": "https://github.com/aalexmrt/github-scraper",
   "top_contributors": [
     {
-      "identifier": "aalexmrt",
       "username": "aalexmrt",
       "email": "67644735+aalexmrt@users.noreply.github.com",
       "profileUrl": "https://github.com/aalexmrt",
@@ -200,42 +341,179 @@ curl -X GET "http://localhost:3000/leaderboard?repoUrl=https://github.com/aalexm
 }
 ```
 
-### Frontend: Using the Application
+#### List All Repositories
 
-The application frontend provides an interface to interact with the backend, making it easier to process repositories and view leaderboards.
+**Endpoint**: `GET /repositories`
 
-1. **Add a Repository**
+**Example:**
 
-   - Open the application frontend at `http://localhost:4000`.
-   - Use the **Add Repository** form to submit a GitHub repository URL for processing.
+```bash
+curl "http://localhost:3000/repositories"
+```
 
-2. **Monitor Repository Processing**
+**Response:**
 
-   - Navigate to the **Processed Repositories** section to view the status of your repositories:
-     - **Processing**: The repository is currently being analyzed.
-     - **On Queue**: The repository is waiting for processing.
-     - **Completed**: The repository has been successfully processed.
+```json
+[
+  {
+    "id": 1,
+    "url": "https://github.com/aalexmrt/github-scraper",
+    "pathName": "github-scraper",
+    "state": "completed",
+    "lastProcessedAt": "2024-11-28T12:00:00Z",
+    "createdAt": "2024-11-28T10:00:00Z",
+    "updatedAt": "2024-11-28T12:00:00Z"
+  }
+]
+```
 
-3. **View Contributor Leaderboard**
-   - For completed repositories, click the **Leaderboard** button to view a detailed contributor leaderboard.
+## 🛠️ Development
 
-<img width="1728" alt="Screenshot 2024-11-28 at 2 54 21 PM" src="https://github.com/user-attachments/assets/e75a9997-405f-4b2c-83e6-6f24a28c1a20">
-<img width="1728" alt="Screenshot 2024-11-28 at 2 54 28 PM" src="https://github.com/user-attachments/assets/7ef773a2-39bc-4906-879d-c32f045090e9">
-<img width="1728" alt="Screenshot 2024-11-28 at 2 54 38 PM" src="https://github.com/user-attachments/assets/49417023-aab0-4edf-8158-91afdecbd138">
+### Project Structure
 
+```
+github-scraper/
+├── backend/
+│   ├── src/
+│   │   ├── index.ts              # Fastify server
+│   │   ├── services/             # Business logic
+│   │   │   ├── queueService.ts  # Bull queue setup
+│   │   │   └── repoService.ts   # Repository operations
+│   │   ├── workers/             # Background workers
+│   │   │   └── repoWorker.ts    # Repository processing worker
+│   │   └── utils/               # Utilities
+│   │       ├── prisma.ts        # Prisma client
+│   │       ├── isValidGitHubUrl.ts
+│   │       └── normalizeUrl.ts
+│   └── prisma/
+│       └── schema.prisma        # Database schema
+├── frontend/
+│   └── src/
+│       ├── app/                 # Next.js app directory
+│       ├── components/         # React components
+│       ├── context/            # React Context providers
+│       ├── services/           # API services
+│       └── hooks/              # Custom React hooks
+└── docker-compose.yml           # Docker orchestration
+```
 
-## **Next Steps**
+### Running in Development Mode
 
-### **Backend**
+The Docker setup includes hot-reload for both backend and frontend:
 
-- [X] Add support for private repositories with GitHub token validation in the `/leaderboard` endpoint.
-- [X] Update the /leaderboard endpoint to split responsibilities by creating a new endpoint for processing and retrieving the leaderboard, and include the repository URL in the response.
-- [ ] Improve handling API limits error and optimize the current flow.
-- [ ] Add retries to failed processed repositories
-- [ ] Continue improving general optimization and performance
-- [ ] Escale horizontally with multiple workers and with smart queues management 
+- **Backend**: Uses `nodemon` to watch for TypeScript changes
+- **Frontend**: Uses Next.js built-in HMR (Hot Module Replacement)
 
-### **Frontend**
+Changes to code are automatically reflected without restarting containers.
 
-- [X] Add a form to input a repository URL and optional GitHub token.
-- [ ] Improve UI...
+### Database Migrations
+
+Prisma migrations run automatically on container startup. To create a new migration:
+
+```bash
+cd backend
+npx prisma migrate dev --name migration_name
+```
+
+## 🔍 How It Works
+
+1. **Repository Submission**: User submits a GitHub repository URL via web interface or API
+2. **URL Validation**: System validates and normalizes the URL (handles SSH/HTTPS formats)
+3. **Job Queue**: Repository is added to Redis queue for asynchronous processing
+4. **Repository Sync**: Worker clones or updates the repository (bare clone for efficiency)
+5. **Commit Analysis**: System analyzes commit history and extracts contributor information
+6. **User Resolution**: Contributors are resolved using GitHub API (if needed) and cached
+7. **Leaderboard Generation**: Commit counts are calculated and stored in database
+8. **Status Updates**: Frontend polls for status updates and displays results when ready
+
+## 📊 Tech Stack
+
+### Backend
+
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Fastify 5.1.0
+- **Database**: PostgreSQL 15 with Prisma ORM
+- **Queue**: Bull 4.16.4 with Redis
+- **Git**: simple-git 3.27.0
+- **HTTP Client**: Axios 1.7.7
+
+### Frontend
+
+- **Framework**: Next.js 15.0.3
+- **UI Library**: React 19
+- **Styling**: Tailwind CSS 3.4.1
+- **Components**: Radix UI
+- **State**: React Query 5.61.0, Context API
+- **Forms**: React Hook Form 7.53.2
+
+### Infrastructure
+
+- **Containerization**: Docker & Docker Compose
+- **Database**: PostgreSQL 15
+- **Cache/Queue**: Redis 6
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Issue**: Backend won't start
+
+- **Solution**: Check that PostgreSQL and Redis containers are running
+- Verify `DATABASE_URL` in `.env` matches Docker Compose configuration
+
+**Issue**: Repository processing fails
+
+- **Solution**: Check repository URL is valid and accessible
+- For private repos, ensure GitHub token has correct permissions
+- Check worker container logs: `docker-compose logs worker`
+
+**Issue**: Frontend can't connect to backend
+
+- **Solution**: Verify Next.js rewrite configuration in `next.config.ts`
+- Ensure backend container is named `app` in Docker Compose
+
+**Issue**: Rate limit errors from GitHub API
+
+- **Solution**: Add a GitHub Personal Access Token to `.env`
+- Token increases rate limit from 60 to 5000 requests/hour
+
+## 🚧 Roadmap
+
+### Backend
+
+- [ ] Implement exponential backoff for GitHub API rate limits
+- [ ] Add automatic retry mechanism for failed repositories
+- [ ] Horizontal scaling with multiple workers
+- [ ] Redis caching for leaderboard results
+- [ ] Structured logging and monitoring
+
+### Frontend
+
+- [ ] WebSocket integration for real-time updates (replace polling)
+- [ ] Enhanced UI/UX improvements
+- [ ] Export leaderboard data (CSV/JSON)
+- [ ] Advanced filtering and search
+- [ ] Pagination for large datasets
+
+## 📝 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📚 Additional Documentation
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architecture and design patterns
+- [API Documentation](#usage) - Complete API reference
+
+## 👤 Author
+
+**Alex Martinez**
+
+- GitHub: [@aalexmrt](https://github.com/aalexmrt)
+
+---
+
+**Note**: This application processes repositories asynchronously. Large repositories may take several minutes to process. The frontend automatically polls for status updates and will display results when processing completes.

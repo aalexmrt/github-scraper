@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { KeyRound, AlertCircle } from 'lucide-react';
+import { KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useRepositoryContext } from '../context/RepositoryContext';
+import { useAuth } from '../context/AuthContext';
 
 import { Label } from './ui/label';
 
@@ -25,14 +26,25 @@ export const RepositoryForm: React.FC = () => {
   const [apiToken, setApiToken] = useState('');
   const [message, setMessage] = useState('');
   const { refreshJobs } = useRepositoryContext();
+  const { isAuthenticated } = useAuth();
 
   const submitRepository = useMutation({
     mutationFn: async () => {
-      // Perform the API request
+      // If user is authenticated, backend will use their token automatically
+      // Only send Authorization header if user manually provided a token
+      const headers: Record<string, string> = {};
+      if (isPrivate && !isAuthenticated && apiToken) {
+        headers.Authorization = `Bearer ${apiToken}`;
+      }
+
+      // Perform the API request with credentials to include session cookie
       return await axios.post(
         `/api/leaderboard?repoUrl=${repoUrl}`,
-        {}, // Request body (empty in this case)
-        isPrivate ? { headers: { Authorization: `Bearer ${apiToken}` } } : {}
+        {},
+        {
+          headers,
+          withCredentials: true,
+        }
       );
     },
     onSuccess: (data: ApiResponse) => {
@@ -61,8 +73,8 @@ export const RepositoryForm: React.FC = () => {
       return;
     }
 
-    if (isPrivate && !apiToken) {
-      setMessage('API token is required for private repositories.');
+    if (isPrivate && !isAuthenticated && !apiToken) {
+      setMessage('API token is required for private repositories, or sign in with GitHub.');
       return;
     }
 
@@ -103,22 +115,45 @@ export const RepositoryForm: React.FC = () => {
           </div>
           {isPrivate && (
             <div className="space-y-2">
-              <Label htmlFor="apiToken">GitHub API Token</Label>
-              <div className="relative">
-                <KeyRound className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="apiToken"
-                  type="password"
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                  value={apiToken}
-                  onChange={(e) => setApiToken(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your token will only be used for this request and won't be
-                stored
-              </p>
+              {isAuthenticated ? (
+                <Alert className="bg-blue-50 text-blue-900 border-blue-200">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    You're signed in with GitHub. Your token will be used automatically for private repositories.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <Label htmlFor="apiToken">GitHub API Token</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="apiToken"
+                      type="password"
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      value={apiToken}
+                      onChange={(e) => setApiToken(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your token will only be used for this request and won't be
+                    stored. Or{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const backendUrl =
+                          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+                        window.location.href = `${backendUrl}/auth/github`;
+                      }}
+                      className="text-blue-600 hover:underline"
+                    >
+                      sign in with GitHub
+                    </button>{' '}
+                    to use your token automatically.
+                  </p>
+                </>
+              )}
             </div>
           )}
           <Button

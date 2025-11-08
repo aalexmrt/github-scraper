@@ -418,6 +418,7 @@ The demo repository population is **idempotent** and can be run safely multiple 
 The populate script uses `GITHUB_TOKEN` from environment variables if available:
 
 - **With Token** (`GITHUB_TOKEN` set):
+
   - ✅ Higher API rate limits (5,000 requests/hour vs 60/hour)
   - ✅ Better user profile data (usernames, profile URLs)
   - ✅ More complete leaderboard information

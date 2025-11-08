@@ -1,17 +1,20 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-
-  /* config options here */
   async rewrites() {
+    // Use environment variable for backend URL
+    // When frontend runs locally, use localhost:3000
+    // When frontend runs in Docker, use backend:3000
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
     return [
       {
         source: '/api/:path*', // Proxy all API requests
-        destination: 'http://app:3000/:path*', // Redirect to the backend container
+        destination: `${backendUrl}/:path*`, // Redirect to the backend
       },
     ];
   },
 };
 
 export default nextConfig;
-

@@ -45,3 +45,14 @@ model RepositoryContributor {
 
   @@unique([repositoryId, contributorId]) // Composite unique constraint
 }
+
+model User {
+  id                      Int                      @id @default(autoincrement())
+  githubId                Int                      @unique
+  username                String
+  email                   String?
+  avatarUrl               String?
+  accessToken             String                   // Encrypted GitHub access token
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+}

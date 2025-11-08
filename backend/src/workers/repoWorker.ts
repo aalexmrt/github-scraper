@@ -12,7 +12,7 @@ repoQueue.process(async (job) => {
     });
 
     await syncRepository(dbRepository, token);
-    await generateLeaderboard(dbRepository);
+    await generateLeaderboard(dbRepository, token);
 
     // Update repository state to completed
     await prisma.repository.update({
