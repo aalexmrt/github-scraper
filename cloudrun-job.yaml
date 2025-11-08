@@ -1,0 +1,82 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: github-scraper-worker
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "true"  # ✅ Reduces cost
+    spec:
+      serviceAccountName: default
+      containers:
+        - image: gcr.io/YOUR_PROJECT_ID/github-scraper-worker:latest
+          resources:
+            limits:
+              # 🛡️ COST PROTECTION: Keep these limits to stay within free tier
+              # CPU: 1 = minimum viable, free tier allows up to 240k CPU-seconds/month
+              # Memory: 512Mi = minimum viable, free tier allows up to 450k GiB-seconds/month
+              cpu: "1"           # ⚠️ DO NOT INCREASE (doubles usage)
+              memory: "512Mi"    # ⚠️ DO NOT INCREASE (increases memory-seconds)
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: demo-db-url
+                  key: latest
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: demo-redis-host
+                  key: latest
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: demo-redis-port
+                  key: latest
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: demo-redis-password
+                  key: latest
+            - name: REDIS_TLS
+              value: "true"
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: demo-github-token
+                  key: latest
+            - name: USE_R2_STORAGE
+              value: "true"
+            - name: R2_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: demo-r2-account-id
+                  key: latest
+            - name: R2_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: demo-r2-access-key
+                  key: latest
+            - name: R2_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: demo-r2-secret-key
+                  key: latest
+            - name: R2_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: demo-r2-bucket
+                  key: latest
+      restartPolicy: Never
+      # 🛡️ COST PROTECTION: Timeouts prevent runaway jobs from consuming resources
+      timeoutSeconds: 600  # 10 minutes max (minimum billing: 1 minute per execution)
+      taskCount: 1  # ✅ Process one job per execution (predictable usage)
+      parallelism: 1  # ✅ Run sequentially (no parallel tasks = lower usage)
+      taskTimeoutSeconds: 600  # 10 minutes per task (prevents hanging jobs)
+
