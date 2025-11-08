@@ -74,9 +74,9 @@ USE_R2_STORAGE=false
 No changes needed! Local development continues to use Docker volumes.
 
 Your `docker-compose.yml` already has:
+
 ```yaml
-volumes:
-  repo_volume:/data/repos
+volumes: repo_volume:/data/repos
 ```
 
 This will continue to work for local development.
@@ -157,12 +157,14 @@ Git Operations ← Extract from tar.gz ← Download from R2 ← R2 Storage
 ## Cost Estimation
 
 ### Free Tier (First 10GB)
+
 - **Storage**: FREE
 - **Operations**: FREE (1M Class A, 10M Class B/month)
 - **Egress**: FREE
 - **Total**: **$0/month**
 
 ### After Free Tier (Example: 20GB)
+
 - **Storage**: 10GB free + 10GB × $0.015 = **$0.15/month**
 - **Operations**: FREE (likely within limits)
 - **Egress**: FREE
@@ -177,6 +179,7 @@ Git Operations ← Extract from tar.gz ← Download from R2 ← R2 Storage
 ### Issue: "R2 credentials not configured"
 
 **Solution**: Ensure all R2 environment variables are set:
+
 - `R2_ACCOUNT_ID`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
@@ -185,11 +188,13 @@ Git Operations ← Extract from tar.gz ← Download from R2 ← R2 Storage
 ### Issue: "Failed to upload to R2"
 
 **Possible causes**:
+
 1. Invalid credentials
 2. Bucket doesn't exist
 3. Network issues
 
-**Solution**: 
+**Solution**:
+
 - Verify credentials in Cloudflare dashboard
 - Check bucket name matches
 - Verify network connectivity
@@ -203,6 +208,7 @@ Git Operations ← Extract from tar.gz ← Download from R2 ← R2 Storage
 **Expected**: R2 operations involve download/upload, so they're slower than local filesystem.
 
 **Optimization**:
+
 - Keep frequently accessed repos in `/tmp/repos` (not cleaned up)
 - Implement caching strategy
 - Consider keeping active repos local longer
@@ -223,11 +229,13 @@ If you have existing repositories in Railway volumes:
 ## Monitoring
 
 ### R2 Dashboard
+
 - Monitor storage usage
 - Track operations
 - View access logs
 
 ### Application Logs
+
 - Check for R2 upload/download errors
 - Monitor temp directory usage
 - Track operation times
@@ -246,13 +254,13 @@ If you have existing repositories in Railway volumes:
 
 ## Environment Variable Reference
 
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `USE_R2_STORAGE` | No | Enable R2 storage (set to `true` for production) | `true` |
-| `R2_ACCOUNT_ID` | Yes (if R2 enabled) | Cloudflare account ID | `abc123def456` |
-| `R2_ACCESS_KEY_ID` | Yes (if R2 enabled) | R2 API access key | `abc123...` |
-| `R2_SECRET_ACCESS_KEY` | Yes (if R2 enabled) | R2 API secret key | `xyz789...` |
-| `R2_BUCKET_NAME` | No | R2 bucket name (defaults to `github-repos`) | `github-repos` |
+| Variable               | Required            | Description                                      | Example        |
+| ---------------------- | ------------------- | ------------------------------------------------ | -------------- |
+| `USE_R2_STORAGE`       | No                  | Enable R2 storage (set to `true` for production) | `true`         |
+| `R2_ACCOUNT_ID`        | Yes (if R2 enabled) | Cloudflare account ID                            | `abc123def456` |
+| `R2_ACCESS_KEY_ID`     | Yes (if R2 enabled) | R2 API access key                                | `abc123...`    |
+| `R2_SECRET_ACCESS_KEY` | Yes (if R2 enabled) | R2 API secret key                                | `xyz789...`    |
+| `R2_BUCKET_NAME`       | No                  | R2 bucket name (defaults to `github-repos`)      | `github-repos` |
 
 ---
 
@@ -265,5 +273,3 @@ If you have existing repositories in Railway volumes:
 5. ✅ Monitor usage
 
 For deployment instructions, see `DEPLOYMENT.md`.
-
-
