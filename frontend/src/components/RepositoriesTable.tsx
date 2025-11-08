@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, GitBranch, AlertCircle } from 'lucide-react';
-import { LeaderBoard } from './LeaderBoard';
 import { useRepositoryContext } from '../context/RepositoryContext';
 import { Repository } from '../services/repositoryService';
+import { useRouter } from 'next/navigation';
+import { getLeaderboardRoute } from '@/lib/repoUtils';
 
 const statusConfig: Record<
   Repository['state'],
@@ -29,18 +30,20 @@ const statusConfig: Record<
 };
 
 export function RepositoriesTable() {
+  const router = useRouter();
   const {
     repositories,
     isLoading,
     isError,
-    selectedRepo,
-    setSelectedRepo,
     searchTerm,
     setSearchTerm,
   } = useRepositoryContext();
 
   const handleRepoClick = (repoUrl: string) => {
-    setSelectedRepo(repoUrl);
+    const route = getLeaderboardRoute(repoUrl);
+    if (route) {
+      router.push(route);
+    }
   };
 
   const filteredRepositories =
@@ -48,20 +51,11 @@ export function RepositoriesTable() {
       repository.url.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [];
 
-  if (selectedRepo) {
-    return (
-      <LeaderBoard
-        repoUrl={selectedRepo}
-        onBack={() => setSelectedRepo(null)}
-      />
-    );
-  }
-
   if (isLoading) {
     return (
-      <Card className="w-full min-w-[800px] max-w-4xl mx-auto">
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">
+          <CardTitle className="text-2xl font-bold">
             Processed Repositories
           </CardTitle>
         </CardHeader>
@@ -77,7 +71,7 @@ export function RepositoriesTable() {
 
   if (isError) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
+      <Card className="w-full">
         <CardContent className="flex flex-col items-center justify-center p-6">
           <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
           <p className="text-red-500 text-lg mb-4">Error loading jobs.</p>
@@ -87,74 +81,99 @@ export function RepositoriesTable() {
     );
   }
 
+  const hasRepositories = filteredRepositories && filteredRepositories.length > 0;
+
   return (
-    <Card className="w-full min-w-[800px] max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">
-          Processed Repositories
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center space-x-2 mb-4">
-          <Search className="w-5 h-5 text-gray-500" />
-          <Input
-            type="text"
-            placeholder="Search repositories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-grow"
-          />
+    <Card className="w-full border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+      <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-6">
+        <div className="space-y-4">
+          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+            Your Repositories
+          </CardTitle>
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <Search className="w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search repositories..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-transparent border-0 text-base focus:ring-0 placeholder:text-gray-400"
+            />
+          </div>
         </div>
-        <div className="border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60%]">Repository URL</TableHead>
-                <TableHead className="w-[20%]">Status</TableHead>
-                <TableHead className="w-[20%]">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRepositories &&
-                filteredRepositories.length > 0 &&
-                filteredRepositories.map((repo: Repository) => (
-                  <TableRow key={repo.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
+      </CardHeader>
+      <CardContent className="pt-0">
+        {!hasRepositories ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <div className="p-3 rounded-full bg-gray-100 dark:bg-gray-800">
+              <GitBranch className="w-6 h-6 text-gray-400" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-base font-medium text-gray-900 dark:text-white">
+                No repositories yet
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Add a repository above to get started
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-t border-gray-200 dark:border-gray-700 hover:bg-transparent">
+                  <TableHead className="w-[50%] font-semibold text-gray-900 dark:text-white">Repository</TableHead>
+                  <TableHead className="w-[25%] font-semibold text-gray-900 dark:text-white">Status</TableHead>
+                  <TableHead className="w-[25%] text-right font-semibold text-gray-900 dark:text-white">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRepositories.map((repo: Repository) => (
+                  <TableRow 
+                    key={repo.id} 
+                    className="border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <TableCell className="font-medium py-4">
                       <a
-                        className="flex items-center space-x-2"
+                        className="flex items-center space-x-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                         href={repo.url}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <GitBranch className="w-4 h-4" />
-                        <span>{repo.url}</span>
+                        <GitBranch className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{repo.url}</span>
                       </a>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">
                       <Badge
                         variant="outline"
                         className={`${
                           statusConfig[repo.state].color
-                        } font-semibold`}
+                        } font-semibold border-0`}
                       >
                         {statusConfig[repo.state].label}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right py-4">
                       <Button
-                        variant="secondary"
-                        size="sm"
                         onClick={() => handleRepoClick(repo.url)}
                         disabled={repo.state !== 'completed'}
+                        className={`${
+                          repo.state === 'completed'
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                        } transition-colors`}
+                        size="sm"
                       >
-                        Leaderboard
+                        View Leaderboard
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
