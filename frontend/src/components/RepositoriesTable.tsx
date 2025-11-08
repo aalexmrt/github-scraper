@@ -13,11 +13,15 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, GitBranch, AlertCircle } from 'lucide-react';
+import { Search, GitBranch, AlertCircle, RefreshCw } from 'lucide-react';
 import { useRepositoryContext } from '../context/RepositoryContext';
 import { Repository } from '../services/repositoryService';
 import { useRouter } from 'next/navigation';
 import { getLeaderboardRoute } from '@/lib/repoUtils';
+import { useMutation } from '@tanstack/react-query';
+import { retryRepository } from '../services/repositoryService';
+import { useAuth } from '../context/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 const statusConfig: Record<
   Repository['state'],
@@ -31,12 +35,14 @@ const statusConfig: Record<
 
 export function RepositoriesTable() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const {
     repositories,
     isLoading,
     isError,
     searchTerm,
     setSearchTerm,
+    refreshJobs,
   } = useRepositoryContext();
 
   const handleRepoClick = (repoUrl: string) => {
@@ -44,6 +50,31 @@ export function RepositoriesTable() {
     if (route) {
       router.push(route);
     }
+  };
+
+  const retryMutation = useMutation({
+    mutationFn: retryRepository,
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description:
+          'Repository queued for retry. Processing will begin shortly.',
+      });
+      refreshJobs();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description:
+          error.response?.data?.error || 'Failed to retry repository.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleRetry = (repoUrl: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    retryMutation.mutate(repoUrl);
   };
 
   const filteredRepositories =
@@ -81,7 +112,8 @@ export function RepositoriesTable() {
     );
   }
 
-  const hasRepositories = filteredRepositories && filteredRepositories.length > 0;
+  const hasRepositories =
+    filteredRepositories && filteredRepositories.length > 0;
 
   return (
     <Card className="w-full border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
@@ -122,15 +154,21 @@ export function RepositoriesTable() {
             <Table>
               <TableHeader>
                 <TableRow className="border-t border-gray-200 dark:border-gray-700 hover:bg-transparent">
-                  <TableHead className="w-[50%] font-semibold text-gray-900 dark:text-white">Repository</TableHead>
-                  <TableHead className="w-[25%] font-semibold text-gray-900 dark:text-white">Status</TableHead>
-                  <TableHead className="w-[25%] text-right font-semibold text-gray-900 dark:text-white">Action</TableHead>
+                  <TableHead className="w-[45%] font-semibold text-gray-900 dark:text-white">
+                    Repository
+                  </TableHead>
+                  <TableHead className="w-[20%] font-semibold text-gray-900 dark:text-white">
+                    Status
+                  </TableHead>
+                  <TableHead className="w-[35%] text-right font-semibold text-gray-900 dark:text-white">
+                    Action
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRepositories.map((repo: Repository) => (
-                  <TableRow 
-                    key={repo.id} 
+                  <TableRow
+                    key={repo.id}
                     className="border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <TableCell className="font-medium py-4">
@@ -155,18 +193,36 @@ export function RepositoriesTable() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right py-4">
-                      <Button
-                        onClick={() => handleRepoClick(repo.url)}
-                        disabled={repo.state !== 'completed'}
-                        className={`${
-                          repo.state === 'completed'
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
-                        } transition-colors`}
-                        size="sm"
-                      >
-                        View Leaderboard
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        {repo.state === 'failed' && isAuthenticated && (
+                          <Button
+                            onClick={(e) => handleRetry(repo.url, e)}
+                            disabled={retryMutation.isPending}
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                          >
+                            <RefreshCw
+                              className={`h-3.5 w-3.5 ${
+                                retryMutation.isPending ? 'animate-spin' : ''
+                              }`}
+                            />
+                            {retryMutation.isPending ? 'Retrying...' : 'Retry'}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => handleRepoClick(repo.url)}
+                          disabled={repo.state !== 'completed'}
+                          className={`${
+                            repo.state === 'completed'
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                          } transition-colors`}
+                          size="sm"
+                        >
+                          View Leaderboard
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

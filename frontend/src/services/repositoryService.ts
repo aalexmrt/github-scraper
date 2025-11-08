@@ -23,3 +23,12 @@ export const getRepositoryLeaderboard = async (
   console.log(response.data);
   return response.data.top_contributors;
 };
+
+export const retryRepository = async (
+  repoUrl: string
+): Promise<{ message: string; repository: Repository }> => {
+  const response = await axios.post(`/api/repositories/retry?repoUrl=${repoUrl}`, {}, {
+    withCredentials: true,
+  });
+  return response.data;
+};
