@@ -129,10 +129,14 @@ export async function populateDemoRepos(options: { silent?: boolean } = {}): Pro
 
       // Add to queue if not already completed
       if (dbRepository.state !== 'completed') {
+        // Use GITHUB_TOKEN from environment if available (for better rate limits and user data)
+        // For public repos, token is optional but recommended
+        const token = process.env.GITHUB_TOKEN || null;
+        
         // Bull handles duplicate jobs, so it's safe to add even if already queued
-        await repoQueue.add({ dbRepository, token: null });
+        await repoQueue.add({ dbRepository, token });
         if (!silent) {
-          console.log(`   📤 Added to processing queue`);
+          console.log(`   📤 Added to processing queue${token ? ' (with GitHub token)' : ' (no token - public repos only)'}`);
         }
         result.queued++;
       } else {
