@@ -8,3 +8,4 @@ export interface StorageAdapter {
   ensureDirectory(): Promise<void>;
 }
 
+
