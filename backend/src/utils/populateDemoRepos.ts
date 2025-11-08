@@ -22,12 +22,12 @@ export const DEMO_REPOS = [
     category: 'CLI Tool',
   },
   {
-    url: 'https://github.com/expressjs/express',
-    name: 'express',
-    owner: 'expressjs',
-    description: 'Fast, unopinionated, minimalist web framework for Node.js',
+    url: 'https://github.com/sindresorhus/is',
+    name: 'is',
+    owner: 'sindresorhus',
+    description: `Type check values: is.string('🦄') => true`,
     featured: true,
-    category: 'Web Framework',
+    category: 'Utility',
   },
   {
     url: 'https://github.com/mrmlnc/fast-glob',
