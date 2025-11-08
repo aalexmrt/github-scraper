@@ -206,6 +206,77 @@ const startServer = async () => {
       }
     });
 
+    app.post('/repositories/retry', async (request, reply) => {
+      const { repoUrl } = request.query as { repoUrl?: string };
+      const { authorization } = request.headers;
+
+      if (!repoUrl) {
+        return reply
+          .status(400)
+          .send({ error: 'repoUrl query parameter is required' });
+      }
+
+      if (!isValidGitHubUrl(repoUrl)) {
+        return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
+      }
+
+      const normalizedUrl = normalizeRepoUrl(repoUrl);
+
+      try {
+        const dbRepository = await prisma.repository.findUnique({
+          where: { url: normalizedUrl },
+        });
+
+        if (!dbRepository) {
+          return reply.status(404).send({
+            error: 'Repository not found.',
+          });
+        }
+
+        // Only allow retry for failed repositories
+        if (dbRepository.state !== 'failed') {
+          return reply.status(400).send({
+            error: `Repository is not in failed state. Current state: ${dbRepository.state}`,
+          });
+        }
+
+        // Get token from authenticated user session, or fall back to Authorization header, or use env token
+        let token: string | null = null;
+        const userToken = await getUserToken(request);
+        if (userToken) {
+          token = userToken;
+        } else if (authorization) {
+          token = authorization.replace('Bearer ', '');
+        }
+
+        // Reset repository state to pending and update lastAttempt
+        await prisma.repository.update({
+          where: { id: dbRepository.id },
+          data: {
+            state: 'pending',
+            lastAttempt: new Date(),
+          },
+        });
+
+        // Re-add to queue
+        await repoQueue.add({ dbRepository, token });
+
+        return reply.status(200).send({
+          message: 'Repository queued for retry.',
+          repository: {
+            id: dbRepository.id,
+            url: dbRepository.url,
+            state: 'pending',
+          },
+        });
+      } catch (error) {
+        console.error('Error retrying repository:', error);
+        return reply
+          .status(500)
+          .send({ error: 'Failed to retry repository processing.' });
+      }
+    });
+
     // Hook to disconnect Prisma when the server shuts down
     app.addHook('onClose', async () => {
       await prisma.$disconnect();

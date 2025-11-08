@@ -41,12 +41,12 @@ const DEMO_REPOS: DemoRepo[] = [
     category: 'CLI Tool',
   },
   {
-    url: 'https://github.com/commander-js/commander',
-    name: 'commander',
-    owner: 'commander-js',
-    description: 'Complete solution for Node.js command-line programs',
+    url: 'https://github.com/expressjs/express',
+    name: 'express',
+    owner: 'expressjs',
+    description: 'Fast, unopinionated, minimalist web framework for Node.js',
     featured: true,
-    category: 'CLI Framework',
+    category: 'Web Framework',
   },
   {
     url: 'https://github.com/mrmlnc/fast-glob',
