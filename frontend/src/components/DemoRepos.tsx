@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GitBranch, ExternalLink, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { getLeaderboardRoute } from '@/lib/repoUtils';
 
 interface DemoRepo {
   url: string;
@@ -72,13 +74,17 @@ const DEMO_REPOS: DemoRepo[] = [
   },
 ];
 
-interface DemoReposProps {
-  onSelectRepo: (repoUrl: string) => void;
-}
-
-export const DemoRepos: React.FC<DemoReposProps> = ({ onSelectRepo }) => {
+export const DemoRepos: React.FC = () => {
+  const router = useRouter();
   const featuredRepos = DEMO_REPOS.filter((repo) => repo.featured);
   const otherRepos = DEMO_REPOS.filter((repo) => !repo.featured);
+
+  const handleRepoClick = (repoUrl: string) => {
+    const route = getLeaderboardRoute(repoUrl);
+    if (route) {
+      router.push(route);
+    }
+  };
 
   return (
     <div className="w-full space-y-8">
@@ -93,7 +99,7 @@ export const DemoRepos: React.FC<DemoReposProps> = ({ onSelectRepo }) => {
             <Card
               key={repo.url}
               className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50"
-              onClick={() => onSelectRepo(repo.url)}
+              onClick={() => handleRepoClick(repo.url)}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -119,7 +125,7 @@ export const DemoRepos: React.FC<DemoReposProps> = ({ onSelectRepo }) => {
                     className="flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelectRepo(repo.url);
+                      handleRepoClick(repo.url);
                     }}
                   >
                     View Leaderboard
@@ -150,7 +156,7 @@ export const DemoRepos: React.FC<DemoReposProps> = ({ onSelectRepo }) => {
               <Card
                 key={repo.url}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => onSelectRepo(repo.url)}
+                onClick={() => handleRepoClick(repo.url)}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -176,7 +182,7 @@ export const DemoRepos: React.FC<DemoReposProps> = ({ onSelectRepo }) => {
                     className="w-full"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelectRepo(repo.url);
+                      handleRepoClick(repo.url);
                     }}
                   >
                     View Leaderboard

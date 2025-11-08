@@ -74,7 +74,9 @@ export const RepositoryForm: React.FC = () => {
     }
 
     if (isPrivate && !isAuthenticated && !apiToken) {
-      setMessage('API token is required for private repositories, or sign in with GitHub.');
+      setMessage(
+        'API token is required for private repositories, or sign in with GitHub.'
+      );
       return;
     }
 
@@ -82,99 +84,151 @@ export const RepositoryForm: React.FC = () => {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">
+    <Card className="w-full border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-900">
+      <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-6">
+        <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
           Add a GitHub Repository
         </CardTitle>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          Enter a repository URL to analyze its contributors and generate a
+          leaderboard
+        </p>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="repoUrl">Repository URL</Label>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Repository URL Section */}
+          <div className="space-y-3">
+            <Label
+              htmlFor="repoUrl"
+              className="text-base font-semibold text-gray-900 dark:text-white"
+            >
+              Repository URL
+            </Label>
             <Input
               id="repoUrl"
               type="text"
               placeholder="https://github.com/username/repository"
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
+              className="h-11 text-base border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Enter the full GitHub repository URL (HTTPS format)
+            </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="private"
-              checked={isPrivate}
-              onCheckedChange={(checked) => setIsPrivate(checked as boolean)}
-            />
-            <Label
-              htmlFor="private"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              This is a private repository
-            </Label>
-          </div>
-          {isPrivate && (
-            <div className="space-y-2">
-              {isAuthenticated ? (
-                <Alert className="bg-blue-50 text-blue-900 border-blue-200">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <AlertDescription>
-                    You're signed in with GitHub. Your token will be used automatically for private repositories.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  <Label htmlFor="apiToken">GitHub API Token</Label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="apiToken"
-                      type="password"
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                      value={apiToken}
-                      onChange={(e) => setApiToken(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Your token will only be used for this request and won't be
-                    stored. Or{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const backendUrl =
-                          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-                        window.location.href = `${backendUrl}/auth/github`;
-                      }}
-                      className="text-blue-600 hover:underline"
-                    >
-                      sign in with GitHub
-                    </button>{' '}
-                    to use your token automatically.
-                  </p>
-                </>
-              )}
+
+          {/* Private Repository Section */}
+          <div className="space-y-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="private"
+                checked={isPrivate}
+                onCheckedChange={(checked) => setIsPrivate(checked as boolean)}
+                className="h-5 w-5"
+              />
+              <Label
+                htmlFor="private"
+                className="text-base font-medium text-gray-900 dark:text-white cursor-pointer"
+              >
+                This is a private repository
+              </Label>
             </div>
-          )}
+
+            {isPrivate && (
+              <div className="space-y-4 ml-8 border-l-2 border-gray-300 dark:border-gray-600 pl-4">
+                {isAuthenticated ? (
+                  <Alert className="bg-green-50 dark:bg-green-950/50 text-green-900 dark:text-green-200 border-green-200 dark:border-green-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <AlertDescription>
+                      <span className="font-semibold block">
+                        Authenticated ✓
+                      </span>
+                      Your GitHub token will be used automatically for private
+                      repositories.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    <Label
+                      htmlFor="apiToken"
+                      className="text-base font-semibold text-gray-900 dark:text-white"
+                    >
+                      GitHub API Token
+                    </Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="apiToken"
+                        type="password"
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                        value={apiToken}
+                        onChange={(e) => setApiToken(e.target.value)}
+                        className="pl-10 h-11 text-base border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Your token is only used for this request and won't be
+                        stored.
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Or{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const backendUrl =
+                              process.env.NEXT_PUBLIC_API_URL ||
+                              'http://localhost:3000';
+                            window.location.href = `${backendUrl}/auth/github`;
+                          }}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
+                        >
+                          sign in with GitHub
+                        </button>{' '}
+                        to use your token automatically.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
           <Button
             type="submit"
             disabled={submitRepository.status === 'pending'}
+            className="w-full h-11 text-base font-semibold bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
           >
-            {submitRepository.status === 'pending' ? 'Processing...' : 'Submit'}
+            {submitRepository.status === 'pending' ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⏳</span>
+                Processing...
+              </>
+            ) : (
+              'Analyze Repository'
+            )}
           </Button>
+
+          {/* Success Message */}
           {message && (
-            <Alert className="bg-green-50 text-green-900 border-green-200">
-              <AlertDescription>{message}</AlertDescription>
+            <Alert className="bg-green-50 dark:bg-green-950/50 text-green-900 dark:text-green-200 border-green-200 dark:border-green-800">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="font-medium">
+                {message}
+              </AlertDescription>
             </Alert>
           )}
+
+          {/* Error Message */}
           {submitRepository.error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className="bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200 border-red-200 dark:border-red-800">
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <AlertDescription className="font-medium">
                 {submitRepository.error.message}
               </AlertDescription>
             </Alert>
-          )}{' '}
+          )}
         </form>
       </CardContent>
     </Card>

@@ -1,65 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DemoRepos } from './DemoRepos';
-import { DemoLeaderboard } from './DemoLeaderboard';
 import { DemoCTA } from './DemoCTA';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sparkles, TrendingUp } from 'lucide-react';
 
 export const DemoExperience: React.FC = () => {
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
-
-  if (selectedRepo) {
-    return (
-      <div className="w-full max-w-6xl mx-auto px-4 py-8 space-y-6">
-        <DemoLeaderboard
-          repoUrl={selectedRepo}
-          onBack={() => setSelectedRepo(null)}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8 space-y-12">
+    <div className="w-full space-y-12">
       {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2">
-          <Sparkles className="h-8 w-8 text-yellow-500" />
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      <div className="text-center space-y-6 py-8">
+        <div className="flex items-center justify-center gap-3">
+          <Sparkles className="h-10 w-10 text-yellow-500 animate-pulse" />
+          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
             GitHub Contributor Insights
           </h1>
         </div>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Discover who's contributing most to your favorite repositories. Explore contributor leaderboards and commit statistics.
+        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
+          Discover who's contributing most to your favorite repositories. Explore detailed contributor leaderboards, analyze commit statistics, and identify your project's top contributors.
         </p>
       </div>
 
       {/* Stats Card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center gap-8 flex-wrap">
-            <div className="text-center">
-              <div className="flex items-center gap-2 justify-center mb-1">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                <span className="text-3xl font-bold text-blue-600">6</span>
+      <Card className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-2 border-blue-200 dark:border-blue-800/50">
+        <CardContent className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900/50 rounded-lg border border-blue-100 dark:border-blue-800/30">
+              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-sm text-muted-foreground">Demo Repositories</p>
+              <div>
+                <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">6</span>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Demo Repositories Ready</p>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="flex items-center gap-2 justify-center mb-1">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-                <span className="text-3xl font-bold text-purple-600">100%</span>
+            <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900/50 rounded-lg border border-purple-100 dark:border-purple-800/30">
+              <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <p className="text-sm text-muted-foreground">Free to Explore</p>
+              <div>
+                <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">100%</span>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completely Free</p>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Demo Repos */}
-      <DemoRepos onSelectRepo={setSelectedRepo} />
+      <DemoRepos />
 
       {/* CTA Section */}
       <DemoCTA />
