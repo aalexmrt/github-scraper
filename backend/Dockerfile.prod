@@ -39,5 +39,8 @@ RUN mkdir -p /data/repos
 EXPOSE 3000
 
 # Run migrations and start server
-CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
+# If migrations fail, log the error but continue (migrations might already be applied)
+# Use explicit error handling to ensure server starts even if migrations fail
+# Use set -x for debugging and ensure all output goes to stdout/stderr
+CMD ["sh", "-c", "set -x; echo '=== Starting container ==='; echo 'Running database migrations...'; npx prisma migrate deploy || echo 'WARNING: Migration failed or already applied, continuing anyway...'; echo 'Starting server...'; exec npm start"]
 

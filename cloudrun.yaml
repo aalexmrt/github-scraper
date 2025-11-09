@@ -4,19 +4,18 @@ metadata:
   name: api
   annotations:
     run.googleapis.com/ingress: all
-    run.googleapis.com/execution-environment: gen2
-    autoscaling.knative.dev/minScale: '0'
-    autoscaling.knative.dev/maxScale: '3'
-    run.googleapis.com/cpu-throttling: 'true'
 spec:
   template:
     metadata:
       annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: 'true'
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '3'
         autoscaling.knative.dev/target: '80'
     spec:
       containerConcurrency: 80
       timeoutSeconds: 60
-      serviceAccountName: default
       containers:
         - image: gcr.io/personal-gcp-477623/api:latest
           ports:
@@ -28,8 +27,6 @@ spec:
           env:
             - name: NODE_ENV
               value: production
-            - name: PORT
-              value: '8080'
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -78,6 +75,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: r2-bucket
+                  key: latest
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: session-secret
                   key: latest
             - name: FRONTEND_URL
               value: 'https://YOUR_FIREBASE_PROJECT.web.app'

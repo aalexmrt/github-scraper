@@ -60,6 +60,10 @@ printf '%s' "your-redis-password" | \
 printf '%s' "your-github-token" | \
   gcloud secrets create github-token --data-file=-
 
+# Session Secret (required for authentication)
+printf '%s' "$(openssl rand -base64 32)" | \
+  gcloud secrets create session-secret --data-file=-
+
 # R2 Storage (Cloudflare)
 printf '%s' "your-r2-account-id" | \
   gcloud secrets create r2-account-id --data-file=-
@@ -218,7 +222,7 @@ gcloud scheduler jobs delete github-scraper-worker-scheduler \
 gcloud run jobs delete ${JOB_NAME} --region=${REGION}
 
 # Delete secrets (optional)
-gcloud secrets delete db-url redis-host redis-port redis-password github-token r2-account-id r2-access-key r2-secret-key r2-bucket
+gcloud secrets delete db-url redis-host redis-port redis-password session-secret github-token r2-account-id r2-access-key r2-secret-key r2-bucket
 ```
 
 ## Comparison: Cloud Run Jobs vs Kubernetes Worker

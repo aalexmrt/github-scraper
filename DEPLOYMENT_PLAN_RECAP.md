@@ -115,6 +115,7 @@
    printf '%s' "$REDIS_HOST" | gcloud secrets create redis-host --data-file=-
    printf '%s' "$REDIS_PORT" | gcloud secrets create redis-port --data-file=-
    printf '%s' "$REDIS_PASSWORD" | gcloud secrets create redis-password --data-file=-
+   printf '%s' "$(openssl rand -base64 32)" | gcloud secrets create session-secret --data-file=-
    printf '%s' "$GITHUB_TOKEN" | gcloud secrets create github-token --data-file=-
    printf '%s' "$R2_ACCOUNT_ID" | gcloud secrets create r2-account-id --data-file=-
    printf '%s' "$R2_ACCESS_KEY_ID" | gcloud secrets create r2-access-key --data-file=-

@@ -13,6 +13,7 @@ echo "⚠️  Make sure you have these values ready:"
 echo "   - DATABASE_URL (from Neon)"
 echo "   - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD (from Upstash)"
 echo "   - R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY (from Cloudflare)"
+echo "   - SESSION_SECRET (generate with: openssl rand -base64 32)"
 echo "   - GITHUB_TOKEN (optional)"
 echo ""
 
@@ -52,6 +53,20 @@ printf '%s' "${REDIS_PASSWORD}" | gcloud secrets create redis-password \
   --data-file=- \
   --project=${PROJECT_ID} || \
   printf '%s' "${REDIS_PASSWORD}" | gcloud secrets versions add redis-password \
+  --data-file=- \
+  --project=${PROJECT_ID}
+
+# Session Secret (required for authentication)
+read -p "Enter SESSION_SECRET (generate with: openssl rand -base64 32): " SESSION_SECRET
+if [ -z "${SESSION_SECRET}" ]; then
+  echo "⚠️  SESSION_SECRET is empty. Generating one now..."
+  SESSION_SECRET=$(openssl rand -base64 32)
+  echo "✅ Generated SESSION_SECRET: ${SESSION_SECRET}"
+fi
+printf '%s' "${SESSION_SECRET}" | gcloud secrets create session-secret \
+  --data-file=- \
+  --project=${PROJECT_ID} || \
+  printf '%s' "${SESSION_SECRET}" | gcloud secrets versions add session-secret \
   --data-file=- \
   --project=${PROJECT_ID}
 
