@@ -2,7 +2,7 @@
 
 ## 🛡️ Free Tier Limits (Critical to Know)
 
-### Cloud Run Jobs (us-central1)
+### Cloud Run Jobs (us-east1)
 
 - **CPU**: 240,000 vCPU-seconds/month (~66.7 CPU-hours)
 - **Memory**: 450,000 GiB-seconds/month (~125 GiB-hours)
@@ -98,7 +98,7 @@ gcloud billing projects describe YOUR_PROJECT_ID \
 # check-usage.sh - Daily usage checker
 
 PROJECT_ID=${PROJECT_ID:-"your-gcp-project"}
-REGION=${REGION:-"us-central1"}
+REGION=${REGION:-"us-east1"}
 JOB_NAME=${JOB_NAME:-"github-scraper-worker"}
 
 echo "📊 Cloud Run Jobs Usage Report"
@@ -213,7 +213,7 @@ Add these to your routine:
 # 1. Check execution count
 gcloud run jobs executions list \
   --job=github-scraper-worker \
-  --region=us-central1 \
+  --region=us-east1 \
   --limit=5
 
 # 2. Check recent logs for errors
@@ -223,7 +223,7 @@ gcloud logging read "resource.type=cloud_run_job AND severity>=ERROR" \
 
 # 3. Check scheduler status
 gcloud scheduler jobs describe github-scraper-worker-scheduler \
-  --location=us-central1
+  --location=us-east1
 
 # 4. Estimate monthly cost (should be $0)
 # Note: GCP doesn't provide easy cost estimation for free tier
@@ -276,11 +276,11 @@ If you see unexpected charges:
 ```bash
 # 1. Pause scheduler immediately
 gcloud scheduler jobs pause github-scraper-worker-scheduler \
-  --location=us-central1
+  --location=us-east1
 
 # 2. Delete Cloud Run Job (stops all executions)
 gcloud run jobs delete github-scraper-worker \
-  --region=us-central1
+  --region=us-east1
 
 # 3. Check billing
 gcloud billing accounts list

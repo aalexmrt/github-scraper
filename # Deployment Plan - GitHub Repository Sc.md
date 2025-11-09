@@ -1050,7 +1050,7 @@ With Spot VMs: **~$3-5/month** for worker nodes (80% discount)
    gcloud container clusters create github-scraper \
      --num-nodes=3 \
      --machine-type=e2-standard-2 \
-     --zone=us-central1-a \
+     --zone=us-east1-a \
      --enable-autoscaling \
      --min-nodes=1 \
      --max-nodes=5

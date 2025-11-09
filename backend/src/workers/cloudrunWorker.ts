@@ -59,7 +59,7 @@ async function processOneJob() {
       );
       
       // Move job to failed state (Bull will handle retries if configured)
-      await job.moveToFailed(error as Error, job.token);
+      await job.moveToFailed(error as Error);
       
       await prisma.$disconnect();
       await repoQueue.close();

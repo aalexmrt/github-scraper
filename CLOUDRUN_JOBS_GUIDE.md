@@ -37,7 +37,7 @@ Cloud Scheduler (every 2 min)
 
 ```bash
 export PROJECT_ID="your-gcp-project"
-export REGION="us-central1"
+export REGION="us-east1"
 export JOB_NAME="github-scraper-worker"
 ```
 
@@ -46,29 +46,29 @@ export JOB_NAME="github-scraper-worker"
 ```bash
 # Database URL (Neon Postgres)
 printf '%s' "postgres://user:pass@host:5432/dbname" | \
-  gcloud secrets create demo-db-url --data-file=-
+  gcloud secrets create db-url --data-file=-
 
 # Redis (Upstash)
 printf '%s' "your-redis-host" | \
-  gcloud secrets create demo-redis-host --data-file=-
+  gcloud secrets create redis-host --data-file=-
 printf '%s' "6379" | \
-  gcloud secrets create demo-redis-port --data-file=-
+  gcloud secrets create redis-port --data-file=-
 printf '%s' "your-redis-password" | \
-  gcloud secrets create demo-redis-password --data-file=-
+  gcloud secrets create redis-password --data-file=-
 
 # GitHub Token
 printf '%s' "your-github-token" | \
-  gcloud secrets create demo-github-token --data-file=-
+  gcloud secrets create github-token --data-file=-
 
 # R2 Storage (Cloudflare)
 printf '%s' "your-r2-account-id" | \
-  gcloud secrets create demo-r2-account-id --data-file=-
+  gcloud secrets create r2-account-id --data-file=-
 printf '%s' "your-r2-access-key" | \
-  gcloud secrets create demo-r2-access-key --data-file=-
+  gcloud secrets create r2-access-key --data-file=-
 printf '%s' "your-r2-secret-key" | \
-  gcloud secrets create demo-r2-secret-key --data-file=-
+  gcloud secrets create r2-secret-key --data-file=-
 printf '%s' "github-repos" | \
-  gcloud secrets create demo-r2-bucket --data-file=-
+  gcloud secrets create r2-bucket --data-file=-
 ```
 
 ### 3. Update cloudrun-job.yaml
@@ -134,7 +134,7 @@ gcloud scheduler jobs create http github-scraper-worker-scheduler \
 
 ### Stay Within Free Tier
 
-**Example calculation** (us-central1):
+**Example calculation** (us-east1):
 - Job runs every 2 minutes = 720 executions/month
 - Each execution: 1 CPU, 512Mi memory, ~2 minutes average
 - CPU: 720 × 2 min × 1 CPU = 1,440 CPU-minutes = 86,400 CPU-seconds ✅ (well under 240,000)
@@ -218,7 +218,7 @@ gcloud scheduler jobs delete github-scraper-worker-scheduler \
 gcloud run jobs delete ${JOB_NAME} --region=${REGION}
 
 # Delete secrets (optional)
-gcloud secrets delete demo-db-url demo-redis-host demo-redis-port demo-redis-password demo-github-token demo-r2-account-id demo-r2-access-key demo-r2-secret-key demo-r2-bucket
+gcloud secrets delete db-url redis-host redis-port redis-password github-token r2-account-id r2-access-key r2-secret-key r2-bucket
 ```
 
 ## Comparison: Cloud Run Jobs vs Kubernetes Worker

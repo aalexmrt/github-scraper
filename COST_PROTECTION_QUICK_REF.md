@@ -46,10 +46,10 @@
 
 ```bash
 # Pause scheduler
-gcloud scheduler jobs pause github-scraper-worker-scheduler --location=us-central1
+gcloud scheduler jobs pause github-scraper-worker-scheduler --location=us-east1
 
 # Delete job
-gcloud run jobs delete github-scraper-worker --region=us-central1
+gcloud run jobs delete github-scraper-worker --region=us-east1
 ```
 
 ## 📊 Monitoring
@@ -59,10 +59,10 @@ gcloud run jobs delete github-scraper-worker --region=us-central1
 ./check-usage.sh
 
 # View executions
-gcloud run jobs executions list --job=github-scraper-worker --region=us-central1
+gcloud run jobs executions list --job=github-scraper-worker --region=us-east1
 
 # Check scheduler
-gcloud scheduler jobs describe github-scraper-worker-scheduler --location=us-central1
+gcloud scheduler jobs describe github-scraper-worker-scheduler --location=us-east1
 ```
 
 ## 📚 Full Guide

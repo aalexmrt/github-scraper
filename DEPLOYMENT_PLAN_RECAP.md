@@ -73,8 +73,8 @@
 3. **Set Environment Variables**
    ```bash
    export PROJECT_ID="your-gcp-project"
-   export REGION="us-central1"
-   export SERVICE="demo-api"
+   export REGION="us-east1"
+   export SERVICE="api"
    export JOB_NAME="github-scraper-worker"
    ```
 
@@ -111,15 +111,15 @@
 1. **Create Secrets**
 
    ```bash
-   printf '%s' "$DATABASE_URL" | gcloud secrets create demo-db-url --data-file=-
-   printf '%s' "$REDIS_HOST" | gcloud secrets create demo-redis-host --data-file=-
-   printf '%s' "$REDIS_PORT" | gcloud secrets create demo-redis-port --data-file=-
-   printf '%s' "$REDIS_PASSWORD" | gcloud secrets create demo-redis-password --data-file=-
-   printf '%s' "$GITHUB_TOKEN" | gcloud secrets create demo-github-token --data-file=-
-   printf '%s' "$R2_ACCOUNT_ID" | gcloud secrets create demo-r2-account-id --data-file=-
-   printf '%s' "$R2_ACCESS_KEY_ID" | gcloud secrets create demo-r2-access-key --data-file=-
-   printf '%s' "$R2_SECRET_ACCESS_KEY" | gcloud secrets create demo-r2-secret-key --data-file=-
-   printf '%s' "$R2_BUCKET_NAME" | gcloud secrets create demo-r2-bucket --data-file=-
+   printf '%s' "$DATABASE_URL" | gcloud secrets create db-url --data-file=-
+   printf '%s' "$REDIS_HOST" | gcloud secrets create redis-host --data-file=-
+   printf '%s' "$REDIS_PORT" | gcloud secrets create redis-port --data-file=-
+   printf '%s' "$REDIS_PASSWORD" | gcloud secrets create redis-password --data-file=-
+   printf '%s' "$GITHUB_TOKEN" | gcloud secrets create github-token --data-file=-
+   printf '%s' "$R2_ACCOUNT_ID" | gcloud secrets create r2-account-id --data-file=-
+   printf '%s' "$R2_ACCESS_KEY_ID" | gcloud secrets create r2-access-key --data-file=-
+   printf '%s' "$R2_SECRET_ACCESS_KEY" | gcloud secrets create r2-secret-key --data-file=-
+   printf '%s' "$R2_BUCKET_NAME" | gcloud secrets create r2-bucket --data-file=-
    ```
 
 2. **Build & Push API Image**
@@ -213,8 +213,8 @@
          {
            "source": "/api{,/**}",
            "run": {
-             "serviceId": "demo-api",
-             "region": "us-central1"
+             "serviceId": "api",
+             "region": "us-east1"
            }
          },
          { "source": "/**", "destination": "/index.html" }

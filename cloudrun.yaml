@@ -1,29 +1,35 @@
-apiVersion: run.googleapis.com/v1
-kind: Job
+apiVersion: serving.knative.dev/v1
+kind: Service
 metadata:
-  name: worker
+  name: api
   annotations:
-    run.googleapis.com/launch-stage: BETA
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+    autoscaling.knative.dev/minScale: '0'
+    autoscaling.knative.dev/maxScale: '3'
+    run.googleapis.com/cpu-throttling: 'true'
 spec:
   template:
     metadata:
       annotations:
-        run.googleapis.com/execution-environment: gen2
-        run.googleapis.com/cpu-throttling: 'true' # ✅ Reduces cost
+        autoscaling.knative.dev/target: '80'
     spec:
+      containerConcurrency: 80
+      timeoutSeconds: 60
       serviceAccountName: default
       containers:
-        - image: gcr.io/personal-gcp-477623/worker:latest
+        - image: gcr.io/personal-gcp-477623/api:latest
+          ports:
+            - containerPort: 8080
           resources:
             limits:
-              # 🛡️ COST PROTECTION: Keep these limits to stay within free tier
-              # CPU: 1 = minimum viable, free tier allows up to 240k CPU-seconds/month
-              # Memory: 512Mi = minimum viable, free tier allows up to 450k GiB-seconds/month
-              cpu: '1' # ⚠️ DO NOT INCREASE (doubles usage)
-              memory: '512Mi' # ⚠️ DO NOT INCREASE (increases memory-seconds)
+              cpu: '1'
+              memory: '512Mi'
           env:
             - name: NODE_ENV
               value: production
+            - name: PORT
+              value: '8080'
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -73,10 +79,10 @@ spec:
                 secretKeyRef:
                   name: r2-bucket
                   key: latest
-      restartPolicy: Never
-      # 🛡️ COST PROTECTION: Timeouts prevent runaway jobs from consuming resources
-      timeoutSeconds: 600 # 10 minutes max (minimum billing: 1 minute per execution)
-      taskCount: 1 # ✅ Process one job per execution (predictable usage)
-      parallelism: 1 # ✅ Run sequentially (no parallel tasks = lower usage)
-      taskTimeoutSeconds: 600 # 10 minutes per task (prevents hanging jobs)
-
+            - name: FRONTEND_URL
+              value: 'https://YOUR_FIREBASE_PROJECT.web.app'
+            - name: BACKEND_URL
+              value: 'https://api-YOUR_HASH.us-east1.run.app'
+  traffic:
+    - percent: 100
+      latestRevision: true
