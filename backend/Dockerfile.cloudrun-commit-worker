@@ -44,3 +44,4 @@ RUN mkdir -p /data/repos
 # Run migrations and start Cloud Run commit worker (processes one job and exits)
 CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:cloudrun-commit-worker"]
 
+

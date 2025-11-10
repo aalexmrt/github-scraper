@@ -26,3 +26,4 @@ CREATE INDEX "CommitData_repositoryId_processed_idx" ON "CommitData"("repository
 -- AddForeignKey
 ALTER TABLE "CommitData" ADD CONSTRAINT "CommitData_repositoryId_fkey" FOREIGN KEY ("repositoryId") REFERENCES "Repository"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+

@@ -25,7 +25,9 @@ export const VersionBadge: React.FC = () => {
             {' • '}
             API: {versions.api}
             {' • '}
-            Worker: {versions.worker}
+            Commit Worker: {versions.commitWorker}
+            {' • '}
+            User Worker: {versions.userWorker}
           </>
         )}
         {isLoading && !versions && ' • Loading...'}
@@ -33,4 +35,3 @@ export const VersionBadge: React.FC = () => {
     </div>
   );
 };
-

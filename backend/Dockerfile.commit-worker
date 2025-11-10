@@ -43,3 +43,4 @@ RUN mkdir -p /data/repos
 # Run migrations and start commit worker
 CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:commit-worker"]
 
+

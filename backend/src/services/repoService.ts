@@ -1,7 +1,9 @@
 import simpleGit from 'simple-git';
+import axios from 'axios';
 import prisma from '../utils/prisma';
 import { createStorageAdapter } from './storage/storageFactory';
 import { logger } from '../utils/logger';
+import { rateLimitHandler } from '../utils/rateLimitHandler';
 
 export interface DbRepository {
   id: number;
@@ -16,6 +18,136 @@ export interface DbRepository {
 
 // Initialize storage adapter (filesystem for local, R2 for production)
 const storage = createStorageAdapter();
+
+// Repository size limits (configurable via environment variables)
+const MAX_REPO_SIZE_MB = parseInt(process.env.MAX_REPO_SIZE_MB || '250', 10);
+const MAX_REPO_SIZE_BYTES = MAX_REPO_SIZE_MB * 1024 * 1024;
+const MAX_COMMIT_COUNT = parseInt(process.env.MAX_COMMIT_COUNT || '2500', 10);
+
+/**
+ * Check repository size via GitHub API
+ * Returns size in bytes, or null if check fails or token unavailable
+ */
+async function checkRepoSizeViaAPI(
+  url: string,
+  token: string | null
+): Promise<{ size: number; commitCount?: number } | null> {
+  if (!token) {
+    logger.debug('[REPO_SERVICE] No token available for API size check');
+    return null;
+  }
+
+  try {
+    // Parse owner/repo from URL
+    const match = url.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?\/?$/);
+    if (!match) {
+      logger.warn(`[REPO_SERVICE] Could not parse GitHub URL: ${url}`);
+      return null;
+    }
+
+    const [, owner, repo] = match;
+
+    // Check rate limits before making request
+    await rateLimitHandler.checkAndWait();
+
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    rateLimitHandler.updateFromResponse(response);
+
+    // GitHub API returns size in KB (approximate size of repository when cloned)
+    const sizeKB = response.data.size || 0;
+    const sizeBytes = sizeKB * 1024;
+
+    logger.info(
+      `[REPO_SERVICE] Repository ${owner}/${repo} size: ${(sizeBytes / 1024 / 1024).toFixed(2)}MB (from API)`
+    );
+
+    return { size: sizeBytes };
+  } catch (error: any) {
+    // If API fails, log but don't throw - fallback to clone-then-check
+    if (rateLimitHandler.isRateLimitError(error)) {
+      logger.warn(
+        `[REPO_SERVICE] Rate limit hit while checking repo size via API: ${url}`
+      );
+    } else {
+      logger.warn(
+        `[REPO_SERVICE] Failed to check repo size via API for ${url}: ${error.message}`
+      );
+    }
+    return null;
+  }
+}
+
+/**
+ * Get commit count for a repository
+ */
+async function getCommitCount(repoPath: string): Promise<number> {
+  try {
+    const localPath = await storage.getLocalPath(repoPath);
+    const git = simpleGit(localPath);
+    const count = await git.raw(['rev-list', '--count', '--all']);
+    return parseInt(count.trim(), 10);
+  } catch (error: any) {
+    logger.error(`[REPO_SERVICE] Failed to get commit count: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Get repository size from filesystem
+ */
+async function getRepoSize(repoPath: string): Promise<number> {
+  try {
+    const localPath = await storage.getLocalPath(repoPath);
+    const { execSync } = require('child_process');
+    const sizeStr = execSync(`du -sb "${localPath}"`, { encoding: 'utf-8' });
+    const sizeBytes = parseInt(sizeStr.split('\t')[0], 10);
+    return sizeBytes;
+  } catch (error: any) {
+    logger.error(`[REPO_SERVICE] Failed to get repo size: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Validate repository size and commit count
+ * Throws error if limits exceeded
+ */
+async function validateRepoLimits(
+  repoPath: string,
+  url: string
+): Promise<void> {
+  // Check disk size
+  const repoSize = await getRepoSize(repoPath);
+  const sizeMB = repoSize / 1024 / 1024;
+
+  if (repoSize > MAX_REPO_SIZE_BYTES) {
+    // Delete the oversized repository
+    await storage.delete(repoPath);
+    throw new Error(
+      `Repository too large: ${sizeMB.toFixed(2)}MB exceeds limit of ${MAX_REPO_SIZE_MB}MB`
+    );
+  }
+
+  // Check commit count
+  const commitCount = await getCommitCount(repoPath);
+  if (commitCount > MAX_COMMIT_COUNT) {
+    // Delete the repository with too many commits
+    await storage.delete(repoPath);
+    throw new Error(
+      `Repository has too many commits: ${commitCount.toLocaleString()} exceeds limit of ${MAX_COMMIT_COUNT.toLocaleString()}`
+    );
+  }
+
+  logger.info(
+    `[REPO_SERVICE] Repository ${url} validated: ${sizeMB.toFixed(2)}MB, ${commitCount.toLocaleString()} commits`
+  );
+}
 
 export const syncRepository = async (
   dbRepository: DbRepository,
@@ -36,15 +168,57 @@ export const syncRepository = async (
 
     if (repoExists) {
       // Repository exists, fetch updates
+      logger.info(
+        `[REPO_SERVICE] Repository ${dbRepository.url} already exists, fetching updates...`
+      );
       await storage.fetchUpdates(repoPath);
+      
+      // Validate size after fetch (in case updates pushed it over limit)
+      await validateRepoLimits(repoPath, dbRepository.url);
+      
       return `Repository ${dbRepository.pathName} updated successfully.`;
     } else {
+      // Check size via GitHub API first (if token available)
+      const apiCheck = await checkRepoSizeViaAPI(
+        dbRepository.url,
+        token || process.env.GITHUB_TOKEN || null
+      );
+
+      if (apiCheck) {
+        if (apiCheck.size > MAX_REPO_SIZE_BYTES) {
+          const sizeMB = (apiCheck.size / 1024 / 1024).toFixed(2);
+          throw new Error(
+            `Repository too large: ${sizeMB}MB exceeds limit of ${MAX_REPO_SIZE_MB}MB`
+          );
+        }
+        logger.info(
+          `[REPO_SERVICE] Repository size check passed via API: ${(apiCheck.size / 1024 / 1024).toFixed(2)}MB`
+        );
+      } else {
+        logger.info(
+          `[REPO_SERVICE] API size check unavailable, will check after clone`
+        );
+      }
+
       // Clone new repository
       const cloneUrl = authenticatedRepoUrl || dbRepository.url;
+      logger.info(`[REPO_SERVICE] Cloning repository ${dbRepository.url}...`);
       await storage.cloneFromGit(cloneUrl, repoPath);
+
+      // Validate size and commit count after clone (fallback if API check failed)
+      await validateRepoLimits(repoPath, dbRepository.url);
+
       return `Repository ${dbRepository.pathName} cloned successfully.`;
     }
   } catch (error: any) {
+    // Handle size limit errors specifically
+    if (
+      error.message.includes('too large') ||
+      error.message.includes('too many commits')
+    ) {
+      throw error; // Re-throw size limit errors as-is
+    }
+
     // Handle git command failures
     if (error.message.includes('Could not resolve host')) {
       throw new Error(
@@ -70,6 +244,14 @@ export async function processCommits(
 ): Promise<Array<{ email: string; count: number }>> {
   const repoPath = await storage.getLocalPath(dbRepository.pathName);
   const git = simpleGit(repoPath);
+
+  // Check commit count before processing (safety check)
+  const commitCount = await getCommitCount(dbRepository.pathName);
+  if (commitCount > MAX_COMMIT_COUNT) {
+    throw new Error(
+      `Repository has too many commits: ${commitCount.toLocaleString()} exceeds limit of ${MAX_COMMIT_COUNT.toLocaleString()}`
+    );
+  }
 
   const emailToCount = new Map<string, number>();
 

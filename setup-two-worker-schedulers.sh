@@ -33,25 +33,33 @@ if gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} \
   --location=${REGION} \
   --project=${PROJECT_ID} &>/dev/null; then
   echo "⚠️  Scheduler ${COMMIT_SCHEDULER_NAME} already exists. Updating..."
-  UPDATE_FLAG="--update"
+  gcloud scheduler jobs update http ${COMMIT_SCHEDULER_NAME} \
+    --location=${REGION} \
+    --project=${PROJECT_ID} \
+    --schedule="*/5 * * * *" \
+    --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
+    --http-method=POST \
+    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
+    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
+    --time-zone="UTC" \
+    --attempt-deadline=3600s \
+    --max-retry-attempts=0 \
+    --max-retry-duration=0s
 else
   echo "✅ Creating new scheduler ${COMMIT_SCHEDULER_NAME}..."
-  UPDATE_FLAG=""
+  gcloud scheduler jobs create http ${COMMIT_SCHEDULER_NAME} \
+    --location=${REGION} \
+    --project=${PROJECT_ID} \
+    --schedule="*/5 * * * *" \
+    --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
+    --http-method=POST \
+    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
+    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
+    --time-zone="UTC" \
+    --attempt-deadline=3600s \
+    --max-retry-attempts=0 \
+    --max-retry-duration=0s
 fi
-
-gcloud scheduler jobs create http ${COMMIT_SCHEDULER_NAME} \
-  ${UPDATE_FLAG} \
-  --location=${REGION} \
-  --project=${PROJECT_ID} \
-  --schedule="*/5 * * * *" \
-  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
-  --http-method=POST \
-  --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-  --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
-  --time-zone="UTC" \
-  --attempt-deadline=600s \
-  --max-retry-attempts=0 \
-  --max-retry-duration=0s
 
 echo "✅ Commit Worker Scheduler configured!"
 echo ""
@@ -68,25 +76,33 @@ if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
   --location=${REGION} \
   --project=${PROJECT_ID} &>/dev/null; then
   echo "⚠️  Scheduler ${USER_SCHEDULER_NAME} already exists. Updating..."
-  UPDATE_FLAG="--update"
+  gcloud scheduler jobs update http ${USER_SCHEDULER_NAME} \
+    --location=${REGION} \
+    --project=${PROJECT_ID} \
+    --schedule="0 */4 * * *" \
+    --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
+    --http-method=POST \
+    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
+    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
+    --time-zone="UTC" \
+    --attempt-deadline=3600s \
+    --max-retry-attempts=0 \
+    --max-retry-duration=0s
 else
   echo "✅ Creating new scheduler ${USER_SCHEDULER_NAME}..."
-  UPDATE_FLAG=""
+  gcloud scheduler jobs create http ${USER_SCHEDULER_NAME} \
+    --location=${REGION} \
+    --project=${PROJECT_ID} \
+    --schedule="0 */4 * * *" \
+    --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
+    --http-method=POST \
+    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
+    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
+    --time-zone="UTC" \
+    --attempt-deadline=3600s \
+    --max-retry-attempts=0 \
+    --max-retry-duration=0s
 fi
-
-gcloud scheduler jobs create http ${USER_SCHEDULER_NAME} \
-  ${UPDATE_FLAG} \
-  --location=${REGION} \
-  --project=${PROJECT_ID} \
-  --schedule="0 */4 * * *" \
-  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
-  --http-method=POST \
-  --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-  --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
-  --time-zone="UTC" \
-  --attempt-deadline=600s \
-  --max-retry-attempts=0 \
-  --max-retry-duration=0s
 
 echo "✅ User Worker Scheduler configured!"
 echo ""

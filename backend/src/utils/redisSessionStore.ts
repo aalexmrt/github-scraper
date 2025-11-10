@@ -65,7 +65,11 @@ export class RedisSessionStore {
     return `${this.prefix}${sessionId}`;
   }
 
-  async set(sessionId: string, session: any, callback?: (err?: Error) => void): Promise<void> {
+  async set(
+    sessionId: string,
+    session: any,
+    callback?: (err?: Error) => void
+  ): Promise<void> {
     try {
       const key = this.getKey(sessionId);
       const value = JSON.stringify(session);
@@ -78,7 +82,10 @@ export class RedisSessionStore {
     }
   }
 
-  async get(sessionId: string, callback?: (err?: Error, session?: any) => void): Promise<any> {
+  async get(
+    sessionId: string,
+    callback?: (err?: Error, session?: any) => void
+  ): Promise<any> {
     try {
       const key = this.getKey(sessionId);
       const value = await redisClient.get(key);
@@ -96,7 +103,10 @@ export class RedisSessionStore {
     }
   }
 
-  async destroy(sessionId: string, callback?: (err?: Error) => void): Promise<void> {
+  async destroy(
+    sessionId: string,
+    callback?: (err?: Error) => void
+  ): Promise<void> {
     try {
       const key = this.getKey(sessionId);
       await redisClient.del(key);
@@ -107,7 +117,11 @@ export class RedisSessionStore {
     }
   }
 
-  async touch(sessionId: string, session: any, callback?: (err?: Error) => void): Promise<void> {
+  async touch(
+    sessionId: string,
+    session: any,
+    callback?: (err?: Error) => void
+  ): Promise<void> {
     try {
       const key = this.getKey(sessionId);
       // Update expiration without changing value

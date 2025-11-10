@@ -2,7 +2,8 @@ import apiClient from './apiClient';
 
 export interface VersionInfo {
   api: string;
-  worker: string;
+  commitWorker: string;
+  userWorker: string;
 }
 
 export const fetchVersions = async (): Promise<VersionInfo> => {
@@ -16,7 +17,8 @@ export const fetchVersions = async (): Promise<VersionInfo> => {
     console.warn('Failed to fetch versions from backend:', error);
     return {
       api: 'unknown',
-      worker: 'unknown',
+      commitWorker: 'unknown',
+      userWorker: 'unknown',
     };
   }
 };

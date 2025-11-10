@@ -40,3 +40,4 @@ COPY --from=builder /app/prisma ./prisma
 # Run migrations and start Cloud Run user worker (processes one job and exits)
 CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:cloudrun-user-worker"]
 
+

@@ -1,4 +1,4 @@
-import { userQueue } from '../services/queueService';
+import { userQueue, waitForQueueReady } from '../services/queueService';
 import '../workers/user-worker'; // Import to register the processor
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
@@ -10,6 +10,11 @@ import { getVersion } from '../utils/version';
  */
 async function processOneUserJob() {
   try {
+    // Wait for Redis connection to be ready before proceeding
+    logger.info('[USER_WORKER] Waiting for Redis connection to be ready...');
+    await waitForQueueReady(userQueue, 10, 2000);
+    logger.info('[USER_WORKER] Redis connection ready');
+
     // First, check for stuck active jobs (jobs that were interrupted)
     const activeJobs = await userQueue.getActive();
     if (activeJobs.length > 0) {

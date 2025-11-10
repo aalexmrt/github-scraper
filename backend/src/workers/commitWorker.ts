@@ -9,7 +9,9 @@ const version = getVersion();
 logger.info('[COMMIT_WORKER] Starting commit worker...');
 logger.info(`[COMMIT_WORKER] Worker Version: ${version}`);
 
-commitQueue.process('commit_processing', async (job) => {
+// Process jobs with concurrency support (default: 10 concurrent jobs)
+const CONCURRENCY = parseInt(process.env.COMMIT_WORKER_CONCURRENCY || '10', 10);
+commitQueue.process('commit_processing', CONCURRENCY, async (job) => {
   const { repositoryId, url, pathName, token } = job.data;
 
   try {
@@ -119,3 +121,4 @@ commitQueue.process('commit_processing', async (job) => {
     throw error; // Ensures the job is marked as failed
   }
 });
+

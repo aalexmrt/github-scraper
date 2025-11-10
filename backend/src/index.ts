@@ -112,7 +112,8 @@ const startServer = async () => {
       const version = getVersion();
       return reply.status(200).send({
         api: version,
-        worker: version, // Worker uses same codebase
+        commitWorker: version, // Commit worker version (same codebase)
+        userWorker: version, // User worker version (same codebase)
       });
     });
 

@@ -67,3 +67,13 @@ spec:
                     secretKeyRef:
                       name: r2-bucket
                       key: latest
+                - name: MAX_JOBS_PER_EXECUTION
+                  value: '50'
+                - name: MAX_CONCURRENT_JOBS
+                  value: '10'
+                - name: COMMIT_WORKER_CONCURRENCY
+                  value: '10'
+                - name: MAX_REPO_SIZE_MB
+                  value: '250'
+                - name: MAX_COMMIT_COUNT
+                  value: '2500'

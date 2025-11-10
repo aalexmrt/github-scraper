@@ -257,9 +257,6 @@ deploy_commit_worker() {
   docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${version}
   cd ..
 
-  # Cleanup old Commit Worker images
-  cleanup_old_images "commit-worker" "${version}"
-
   # Generate cloudrun-job-commit-worker.yaml from template using envsubst
   echo "📝 Generating cloudrun-job-commit-worker.yaml from template..."
   export JOB_NAME="commit-worker"
@@ -272,16 +269,18 @@ deploy_commit_worker() {
     --region=${REGION} \
     --project=${PROJECT_ID} &>/dev/null; then
     echo "  Updating existing commit-worker job..."
-    gcloud run jobs update commit-worker \
-      --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${version} \
-      --region=${REGION} \
-      --project=${PROJECT_ID}
+    gcloud run jobs replace cloudrun-job-commit-worker.yaml \
+      --project=${PROJECT_ID} \
+      --region=${REGION}
   else
     echo "  Creating new commit-worker job..."
     gcloud run jobs replace cloudrun-job-commit-worker.yaml \
       --project=${PROJECT_ID} \
       --region=${REGION}
   fi
+
+  # Cleanup old Commit Worker images (after deployment to avoid validation errors)
+  cleanup_old_images "commit-worker" "${version}"
   echo "✅ Commit Worker deployed (version ${version})"
 }
 
@@ -298,9 +297,6 @@ deploy_user_worker() {
   docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${version}
   cd ..
 
-  # Cleanup old User Worker images
-  cleanup_old_images "user-worker" "${version}"
-
   # Generate cloudrun-job-user-worker.yaml from template using envsubst
   echo "📝 Generating cloudrun-job-user-worker.yaml from template..."
   export JOB_NAME="user-worker"
@@ -313,16 +309,18 @@ deploy_user_worker() {
     --region=${REGION} \
     --project=${PROJECT_ID} &>/dev/null; then
     echo "  Updating existing user-worker job..."
-    gcloud run jobs update user-worker \
-      --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${version} \
-      --region=${REGION} \
-      --project=${PROJECT_ID}
+    gcloud run jobs replace cloudrun-job-user-worker.yaml \
+      --project=${PROJECT_ID} \
+      --region=${REGION}
   else
     echo "  Creating new user-worker job..."
     gcloud run jobs replace cloudrun-job-user-worker.yaml \
       --project=${PROJECT_ID} \
       --region=${REGION}
   fi
+
+  # Cleanup old User Worker images (after deployment to avoid validation errors)
+  cleanup_old_images "user-worker" "${version}"
   echo "✅ User Worker deployed (version ${version})"
 }
 

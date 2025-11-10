@@ -52,7 +52,7 @@ view_api_logs() {
   if [ "$LOG_MODE" = "--tail" ]; then
     echo "Streaming logs (press Ctrl+C to stop)..."
     echo ""
-    gcloud logging tail "resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE_NAME} AND resource.labels.location=${REGION}" \
+    gcloud beta logging tail "resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE_NAME} AND resource.labels.location=${REGION}" \
       --project=${PROJECT_ID} \
       --format="table(timestamp,severity,textPayload,jsonPayload.message)"
   else
@@ -74,7 +74,7 @@ view_commit_worker_logs() {
   if [ "$LOG_MODE" = "--tail" ]; then
     echo "Streaming logs (press Ctrl+C to stop)..."
     echo ""
-    gcloud logging tail "resource.type=cloud_run_job AND resource.labels.job_name=${COMMIT_JOB_NAME} AND resource.labels.location=${REGION}" \
+    gcloud beta logging tail "resource.type=cloud_run_job AND resource.labels.job_name=${COMMIT_JOB_NAME} AND resource.labels.location=${REGION}" \
       --project=${PROJECT_ID} \
       --format="table(timestamp,severity,textPayload,jsonPayload.message)"
   else
@@ -96,7 +96,7 @@ view_user_worker_logs() {
   if [ "$LOG_MODE" = "--tail" ]; then
     echo "Streaming logs (press Ctrl+C to stop)..."
     echo ""
-    gcloud logging tail "resource.type=cloud_run_job AND resource.labels.job_name=${USER_JOB_NAME} AND resource.labels.location=${REGION}" \
+    gcloud beta logging tail "resource.type=cloud_run_job AND resource.labels.job_name=${USER_JOB_NAME} AND resource.labels.location=${REGION}" \
       --project=${PROJECT_ID} \
       --format="table(timestamp,severity,textPayload,jsonPayload.message)"
   else
@@ -144,6 +144,24 @@ view_user_worker_errors() {
   echo ""
 }
 
+view_all_logs() {
+  if [ "$LOG_MODE" = "--tail" ]; then
+    echo -e "${GREEN}🌐 Streaming All Logs${NC}"
+    echo "-----------------------------------"
+    echo "Streaming logs from API, Commit Worker, and User Worker (press Ctrl+C to stop)..."
+    echo ""
+    # Combine all filters with OR for streaming
+    gcloud beta logging tail "(resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE_NAME} AND resource.labels.location=${REGION}) OR (resource.type=cloud_run_job AND resource.labels.job_name=${COMMIT_JOB_NAME} AND resource.labels.location=${REGION}) OR (resource.type=cloud_run_job AND resource.labels.job_name=${USER_JOB_NAME} AND resource.labels.location=${REGION})" \
+      --project=${PROJECT_ID} \
+      --format="table(timestamp,severity,resource.labels.service_name,resource.labels.job_name,textPayload,jsonPayload.message)"
+  else
+    view_api_logs
+    view_commit_worker_logs
+    view_user_worker_logs
+  fi
+  echo ""
+}
+
 case "$MODE" in
   api)
     view_api_logs
@@ -160,9 +178,7 @@ case "$MODE" in
     view_user_worker_errors
     ;;
   all|*)
-    view_api_logs
-    view_commit_worker_logs
-    view_user_worker_logs
+    view_all_logs
     ;;
 esac
 
