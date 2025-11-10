@@ -17,7 +17,7 @@ import { logger } from '../src/utils/logger';
 
 async function testWorker() {
   const repoUrl = process.argv[2] || 'https://github.com/vercel/next.js';
-  
+
   logger.info('🧪 Worker Test Script');
   logger.info('====================');
   logger.info('');
@@ -39,7 +39,9 @@ async function testWorker() {
       logger.info(`✅ Redis connected (${waiting.length} jobs waiting)`);
     } catch (error: any) {
       logger.error(`❌ Redis connection failed: ${error.message}`);
-      logger.error('   Check REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_TLS environment variables');
+      logger.error(
+        '   Check REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_TLS environment variables'
+      );
       await prisma.$disconnect();
       await repoQueue.close();
       process.exit(1);
@@ -52,7 +54,7 @@ async function testWorker() {
     const active = await repoQueue.getActive();
     const completed = await repoQueue.getCompleted();
     const failed = await repoQueue.getFailed();
-    
+
     logger.info(`   Waiting: ${waiting.length}`);
     logger.info(`   Active: ${active.length}`);
     logger.info(`   Completed: ${completed.length}`);
@@ -62,13 +64,14 @@ async function testWorker() {
     // Step 4: Add repository to queue
     logger.info('3️⃣  Adding repository to queue...');
     const normalizedUrl = normalizeRepoUrl(repoUrl);
-    
+
     let dbRepository = await prisma.repository.findUnique({
       where: { url: normalizedUrl },
     });
 
     if (!dbRepository) {
-      const repoName = normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
+      const repoName =
+        normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
       dbRepository = await prisma.repository.create({
         data: {
           url: normalizedUrl,
@@ -79,8 +82,10 @@ async function testWorker() {
       });
       logger.info(`✅ Created repository record: ${dbRepository.id}`);
     } else {
-      logger.info(`ℹ️  Repository already exists: ${dbRepository.id} (state: ${dbRepository.state})`);
-      
+      logger.info(
+        `ℹ️  Repository already exists: ${dbRepository.id} (state: ${dbRepository.state})`
+      );
+
       // Reset to pending if it's failed
       if (dbRepository.state === 'failed') {
         dbRepository = await prisma.repository.update({
@@ -93,14 +98,16 @@ async function testWorker() {
 
     // Get token from environment
     const token = process.env.GITHUB_TOKEN || null;
-    
+
     // Add to queue
     const job = await repoQueue.add({ dbRepository, token });
     logger.info(`✅ Added to queue: ${dbRepository.url}`);
     logger.info(`   Job ID: ${job.id}`);
     logger.info(`   Repository ID: ${dbRepository.id}`);
     logger.info(`   State: ${dbRepository.state}`);
-    logger.info(`   Token: ${token ? 'Provided' : 'Not provided (public repos only)'}`);
+    logger.info(
+      `   Token: ${token ? 'Provided' : 'Not provided (public repos only)'}`
+    );
     logger.info('');
 
     // Step 5: Show updated queue status
@@ -116,12 +123,14 @@ async function testWorker() {
     logger.info('   To process this job, run one of:');
     logger.info('   - Local worker:     npm run dev:worker');
     logger.info('   - Cloud Run worker:  npm run dev:cloudrun-worker');
-    logger.info('   - Check status:     npm run check-queue (or npx ts-node scripts/checkQueueStatus.ts)');
+    logger.info(
+      '   - Check status:     npm run check-queue (or npx ts-node scripts/checkQueueStatus.ts)'
+    );
     logger.info('');
 
     await prisma.$disconnect();
     await repoQueue.close();
-    
+
     logger.info('✅ Test repository added successfully!');
     process.exit(0);
   } catch (error: any) {
@@ -134,4 +143,3 @@ async function testWorker() {
 }
 
 testWorker();
-

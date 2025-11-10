@@ -10,7 +10,7 @@ spec:
       template:
         spec:
           containers:
-            - image: us-east1-docker.pkg.dev/personal-gcp-477623/github-scraper/worker:1.2.7
+            - image: us-east1-docker.pkg.dev/personal-gcp-477623/github-scraper/worker:1.2.8
               resources:
                 limits:
                   cpu: '1'

@@ -56,14 +56,38 @@ services:
         condition: service_healthy
     restart: always
 
-  worker:
+  commit-worker:
     build:
       context: ./backend
+      dockerfile: Dockerfile.commit-worker
     volumes:
       - ./backend:/app
       - /app/node_modules
       - repo_volume:/data/repos
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev:worker"
+    command: sh -c "npm install && npx prisma generate && npx prisma migrate deploy && npm run dev:commit-worker"
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://user:password@db:5432/github_scraper
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  user-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.user-worker
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npx prisma generate && npx prisma migrate deploy && npm run dev:user-worker"
     environment:
       - NODE_ENV=development
       - REDIS_HOST=redis

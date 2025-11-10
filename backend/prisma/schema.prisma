@@ -14,45 +14,64 @@ datasource db {
 }
 
 model Repository {
-  id                      Int                      @id @default(autoincrement())
-  url                     String                   @unique
-  pathName                String                   
-  state                   String                   @default("pending") // "pending", "in_progress", "completed", "failed"
-  lastAttempt             DateTime?                // Nullable for repositories that haven’t been processed
-  lastProcessedAt         DateTime?                // Nullable for repositories that haven’t been successfully processed
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  contributors            RepositoryContributor[]  // Relation to RepositoryContributor
+  id                 Int                     @id @default(autoincrement())
+  url                String                  @unique
+  pathName           String
+  state              String                  @default("pending") // "pending", "commits_processing", "users_processing", "completed", "failed"
+  lastAttempt        DateTime? // Nullable for repositories that haven't been processed
+  lastProcessedAt    DateTime? // Nullable for repositories that haven't been successfully processed
+  commitsProcessedAt DateTime? // When commit processing completed
+  usersProcessedAt   DateTime? // When user processing completed
+  totalCommits       Int? // Total commits found
+  uniqueContributors Int? // Unique contributor emails found
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  contributors       RepositoryContributor[] // Relation to RepositoryContributor
+  commitData         CommitData[] // Relation to CommitData
 }
 
 model Contributor {
-  id                      Int                      @id @default(autoincrement())
-  username                String?                  @unique
-  email                   String?                  @unique
-  profileUrl              String?
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  repositories            RepositoryContributor[]  // Relation to RepositoryContributor
+  id           Int                     @id @default(autoincrement())
+  username     String?                 @unique
+  email        String?                 @unique
+  profileUrl   String?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  repositories RepositoryContributor[] // Relation to RepositoryContributor
 }
 
 model RepositoryContributor {
-  id                      Int                      @id @default(autoincrement())
-  repository              Repository               @relation(fields: [repositoryId], references: [id])
-  repositoryId            Int
-  contributor             Contributor              @relation(fields: [contributorId], references: [id])
-  contributorId           Int
-  commitCount             Int                      @default(0)
+  id            Int         @id @default(autoincrement())
+  repository    Repository  @relation(fields: [repositoryId], references: [id])
+  repositoryId  Int
+  contributor   Contributor @relation(fields: [contributorId], references: [id])
+  contributorId Int
+  commitCount   Int         @default(0)
 
   @@unique([repositoryId, contributorId]) // Composite unique constraint
 }
 
+model CommitData {
+  id           Int        @id @default(autoincrement())
+  repositoryId Int
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  authorEmail  String
+  commitCount  Int        @default(0)
+  processed    Boolean    @default(false) // Whether user lookup completed
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([repositoryId, authorEmail])
+  @@index([repositoryId, processed])
+}
+
 model User {
-  id                      Int                      @id @default(autoincrement())
-  githubId                Int                      @unique
-  username                String
-  email                   String?
-  avatarUrl               String?
-  accessToken             String                   // Encrypted GitHub access token
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
+  id          Int      @id @default(autoincrement())
+  githubId    Int      @unique
+  username    String
+  email       String?
+  avatarUrl   String?
+  accessToken String // Encrypted GitHub access token
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

@@ -8,8 +8,8 @@ export interface DbRepository {
   url: string;
   pathName: string;
   state: string;
-  lastAttempt: Date;
-  lastProcessedAt: Date;
+  lastAttempt: Date | null;
+  lastProcessedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,7 +22,7 @@ export const syncRepository = async (
   token: string | null = null
 ): Promise<string> => {
   const repoPath = dbRepository.pathName;
-  
+
   try {
     // Ensure storage is ready
     await storage.ensureDirectory();
@@ -63,6 +63,40 @@ export const syncRepository = async (
   }
 };
 
+// Function to process commits and extract email data (no API calls)
+// Returns array of { email, count } pairs
+export async function processCommits(
+  dbRepository: DbRepository
+): Promise<Array<{ email: string; count: number }>> {
+  const repoPath = await storage.getLocalPath(dbRepository.pathName);
+  const git = simpleGit(repoPath);
+
+  const emailToCount = new Map<string, number>();
+
+  try {
+    const log = await git.log();
+
+    // Count commits per email
+    for (const { author_email } of log.all) {
+      if (!author_email) {
+        continue;
+      }
+
+      const currentCount = emailToCount.get(author_email) || 0;
+      emailToCount.set(author_email, currentCount + 1);
+    }
+
+    // Convert to array format
+    return Array.from(emailToCount.entries()).map(([email, count]) => ({
+      email,
+      count,
+    }));
+  } catch (error: any) {
+    logger.error(`Error processing commits: ${error.message}`);
+    throw new Error(`Failed to process commits: ${error.message}`);
+  }
+}
+
 async function getDbUser(
   author_email: string,
   usersCache: Map<string, any>
@@ -73,9 +107,11 @@ async function getDbUser(
   const username = isNoReply
     ? author_email.split('@')[0].split('+')[1] || author_email.split('@')[0]
     : null;
-  
+
   // Check cache first
-  let dbUser = usersCache.get(author_email) || (username ? usersCache.get(username) : null);
+  let dbUser =
+    usersCache.get(author_email) ||
+    (username ? usersCache.get(username) : null);
   if (dbUser) return dbUser;
 
   // Query database for existing user
@@ -100,11 +136,11 @@ async function getDbUser(
       ? { username, profileUrl: `https://github.com/${username}` }
       : { email: author_email },
   });
-  
+
   // Add to cache
   usersCache.set(author_email, dbUser);
   if (username) usersCache.set(username, dbUser);
-  
+
   return dbUser;
 }
 
@@ -130,7 +166,7 @@ export const generateLeaderboard = async (
 
       // Get or create user from database (no API calls)
       const dbUser = await getDbUser(author_email, usersCache);
-      
+
       logger.debug(dbUser, 'dbUser');
       if (repositoryContributorCache.has(dbUser.id)) {
         repositoryContributorCache.set(dbUser.id, {

@@ -2,7 +2,7 @@
 import fastify from 'fastify';
 import dotenv from 'dotenv';
 import prisma from './utils/prisma';
-import { repoQueue } from './services/queueService';
+import { enqueueCommitJob } from './services/queueService';
 import { getLeaderboardForRepository } from './services/repoService';
 import {
   refreshContributorData,
@@ -148,15 +148,26 @@ const startServer = async () => {
             token = authorization.replace('Bearer ', '');
           }
 
-          await repoQueue.add({ dbRepository, token });
+          await enqueueCommitJob(
+            dbRepository.id,
+            normalizedUrl,
+            repoName,
+            token
+          );
         }
 
         switch (dbRepository.state) {
           case 'pending':
-          case 'in_progress':
-            return reply
-              .status(202)
-              .send({ message: 'Repository is being processed.' });
+          case 'commits_processing':
+            return reply.status(202).send({
+              message: 'Repository commits are being processed.',
+              stage: 'commits',
+            });
+          case 'users_processing':
+            return reply.status(202).send({
+              message: 'Repository user data is being processed.',
+              stage: 'users',
+            });
           case 'failed':
             return reply.status(500).send({
               message: 'Repository processing failed.',
@@ -166,13 +177,6 @@ const startServer = async () => {
             return reply.status(200).send({
               message: 'Repository processed successfully.',
               lastProcessedAt: dbRepository.lastProcessedAt,
-            });
-          case 'completed_partial':
-            return reply.status(200).send({
-              message:
-                'Repository processed partially. Some contributor data may be incomplete due to rate limits.',
-              lastProcessedAt: dbRepository.lastProcessedAt,
-              partial: true,
             });
           default:
             return reply
@@ -218,17 +222,16 @@ const startServer = async () => {
         }
 
         switch (dbRepository.state) {
-          case 'in_progress':
+          case 'commits_processing':
+          case 'users_processing':
           case 'pending':
             return reply
               .status(202)
               .send({ message: 'Repository still processing.' });
           case 'completed':
-          case 'completed_partial':
             const leaderboard = await getLeaderboardForRepository(dbRepository);
             return reply.status(200).send({
               ...leaderboard,
-              partial: dbRepository.state === 'completed_partial',
             });
           default:
             return reply
@@ -319,11 +322,8 @@ const startServer = async () => {
           });
         }
 
-        // Allow retry for failed repositories and partial repositories
-        if (
-          dbRepository.state !== 'failed' &&
-          dbRepository.state !== 'completed_partial'
-        ) {
+        // Allow retry for failed repositories
+        if (dbRepository.state !== 'failed') {
           return reply.status(400).send({
             error: `Repository cannot be retried. Current state: ${dbRepository.state}`,
           });
@@ -347,8 +347,13 @@ const startServer = async () => {
           },
         });
 
-        // Re-add to queue
-        await repoQueue.add({ dbRepository, token });
+        // Re-add to commit queue
+        await enqueueCommitJob(
+          dbRepository.id,
+          dbRepository.url,
+          dbRepository.pathName,
+          token
+        );
 
         return reply.status(200).send({
           message: 'Repository queued for retry.',

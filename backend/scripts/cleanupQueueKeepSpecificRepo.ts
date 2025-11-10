@@ -13,7 +13,8 @@ import { logger } from '../src/utils/logger';
 import { normalizeRepoUrl } from '../src/utils/normalizeUrl';
 
 async function cleanupQueueKeepSpecificRepo() {
-  const keepRepoUrl = process.argv[2] || 'https://github.com/aalexmrt/github-scraper';
+  const keepRepoUrl =
+    process.argv[2] || 'https://github.com/aalexmrt/github-scraper';
   const normalizedKeepUrl = normalizeRepoUrl(keepRepoUrl);
 
   try {
@@ -37,9 +38,9 @@ async function cleanupQueueKeepSpecificRepo() {
 
     // Process all job types
     const allJobs = [
-      ...waiting.map(j => ({ job: j, type: 'waiting' })),
-      ...failed.map(j => ({ job: j, type: 'failed' })),
-      ...delayed.map(j => ({ job: j, type: 'delayed' })),
+      ...waiting.map((j) => ({ job: j, type: 'waiting' })),
+      ...failed.map((j) => ({ job: j, type: 'failed' })),
+      ...delayed.map((j) => ({ job: j, type: 'delayed' })),
     ];
 
     for (const { job, type } of allJobs) {
@@ -55,21 +56,29 @@ async function cleanupQueueKeepSpecificRepo() {
           await job.remove();
           removedCount++;
         } catch (error: any) {
-          logger.error(`   ❌ Failed to remove job ${job.id}: ${error.message}`);
+          logger.error(
+            `   ❌ Failed to remove job ${job.id}: ${error.message}`
+          );
         }
       }
     }
 
     // Warn about active jobs
     if (active.length > 0) {
-      logger.warn(`⚠️  Found ${active.length} active job(s) - these are currently being processed`);
+      logger.warn(
+        `⚠️  Found ${active.length} active job(s) - these are currently being processed`
+      );
       for (const job of active) {
         const repoUrl = job.data.dbRepository?.url || '';
         const normalizedJobUrl = normalizeRepoUrl(repoUrl);
         if (normalizedJobUrl === normalizedKeepUrl) {
-          logger.info(`   ✅ Active job ${job.id} is for the repository we want to keep`);
+          logger.info(
+            `   ✅ Active job ${job.id} is for the repository we want to keep`
+          );
         } else {
-          logger.warn(`   ⚠️  Active job ${job.id} (${repoUrl}) - cannot remove while active`);
+          logger.warn(
+            `   ⚠️  Active job ${job.id} (${repoUrl}) - cannot remove while active`
+          );
         }
       }
     }
@@ -80,7 +89,7 @@ async function cleanupQueueKeepSpecificRepo() {
 
     // Clean up repositories from database (except the one we want to keep)
     logger.info('🗄️  Cleaning up repositories from database...\n');
-    
+
     const allRepos = await prisma.repository.findMany({
       orderBy: { createdAt: 'desc' },
     });
@@ -89,7 +98,7 @@ async function cleanupQueueKeepSpecificRepo() {
 
     for (const repo of allRepos) {
       const normalizedRepoUrl = normalizeRepoUrl(repo.url);
-      
+
       if (normalizedRepoUrl === normalizedKeepUrl) {
         logger.info(`✅ Keeping repository ${repo.id} (${repo.url})`);
         // Reset to pending if needed so it can be re-processed
@@ -102,32 +111,42 @@ async function cleanupQueueKeepSpecificRepo() {
         }
       } else {
         // Only delete if it's in a state that indicates it's not needed
-        if (repo.state === 'failed' || repo.state === 'pending' || repo.state === 'queued') {
+        if (
+          repo.state === 'failed' ||
+          repo.state === 'pending' ||
+          repo.state === 'queued'
+        ) {
           try {
             logger.info(`🗑️  Deleting repository ${repo.id} (${repo.url})`);
-            
+
             // Delete RepositoryContributor records first
             await prisma.repositoryContributor.deleteMany({
               where: { repositoryId: repo.id },
             });
-            
+
             // Delete the repository
             await prisma.repository.delete({
               where: { id: repo.id },
             });
-            
+
             deletedReposCount++;
             logger.info(`   ✅ Deleted repository ${repo.id}`);
           } catch (error: any) {
-            logger.error(`   ❌ Failed to delete repository ${repo.id}: ${error.message}`);
+            logger.error(
+              `   ❌ Failed to delete repository ${repo.id}: ${error.message}`
+            );
           }
         } else {
-          logger.info(`⏭️  Skipping repository ${repo.id} (${repo.url}) - state: ${repo.state}`);
+          logger.info(
+            `⏭️  Skipping repository ${repo.id} (${repo.url}) - state: ${repo.state}`
+          );
         }
       }
     }
 
-    logger.info(`\n✅ Database cleanup complete! Deleted ${deletedReposCount} repository/repositories.\n`);
+    logger.info(
+      `\n✅ Database cleanup complete! Deleted ${deletedReposCount} repository/repositories.\n`
+    );
 
     // Show final status
     const finalWaiting = await repoQueue.getWaiting();
@@ -163,4 +182,3 @@ async function cleanupQueueKeepSpecificRepo() {
 }
 
 cleanupQueueKeepSpecificRepo();
-

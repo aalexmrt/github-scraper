@@ -29,8 +29,14 @@ const statusConfig: Record<
 > = {
   failed: { label: 'Failed', color: 'bg-red-500 text-red-100' },
   in_progress: { label: 'Processing', color: 'bg-yellow-500 text-yellow-100' },
+  commits_processing: { label: 'Processing Commits', color: 'bg-yellow-500 text-yellow-100' },
+  users_processing: { label: 'Processing Users', color: 'bg-yellow-500 text-yellow-100' },
   pending: { label: 'On Queue', color: 'bg-blue-500 text-blue-100' },
   completed: { label: 'Completed', color: 'bg-green-500 text-green-100' },
+};
+
+const getStatusConfig = (state: Repository['state']) => {
+  return statusConfig[state] || { label: state, color: 'bg-gray-500 text-gray-100' };
 };
 
 export function RepositoriesTable() {
@@ -186,10 +192,10 @@ export function RepositoriesTable() {
                       <Badge
                         variant="outline"
                         className={`${
-                          statusConfig[repo.state].color
+                          getStatusConfig(repo.state).color
                         } font-semibold border-0`}
                       >
-                        {statusConfig[repo.state].label}
+                        {getStatusConfig(repo.state).label}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right py-4">

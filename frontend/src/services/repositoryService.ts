@@ -8,7 +8,7 @@ axios.defaults.withCredentials = true;
 export interface Repository {
   id: string;
   url: string;
-  state: 'pending' | 'in_progress' | 'completed' | 'failed';
+  state: 'pending' | 'in_progress' | 'commits_processing' | 'users_processing' | 'completed' | 'failed';
 }
 // Fetch repository jobs from the API
 export const fetchRepositories = async (): Promise<Repository[]> => {

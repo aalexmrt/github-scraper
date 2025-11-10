@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { KeyRound, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { useRepositoryContext } from '../context/RepositoryContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -93,6 +93,17 @@ export const RepositoryForm: React.FC = () => {
           Enter a repository URL to analyze its contributors and generate a
           leaderboard
         </p>
+        {process.env.NODE_ENV === 'production' && (
+          <Alert className="mt-4 bg-blue-50 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-sm">
+              <span className="font-semibold">Note:</span> This is an open source
+              project with limited budget. Repositories are processed via a
+              scheduled queue that runs every 5 minutes. Your repository will be
+              added to the queue and processed during the next scheduled run.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-6">
