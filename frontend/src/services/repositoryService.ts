@@ -16,13 +16,31 @@ export const fetchRepositories = async (): Promise<Repository[]> => {
   return response.data;
 };
 
+export interface LeaderboardResponse {
+  top_contributors: Contributor[];
+  isPartial?: boolean;
+  repository?: string;
+}
+
+export interface Contributor {
+  commitCount: number;
+  username: string | null;
+  email: string;
+  profileUrl: string | null;
+  isEnriched?: boolean;
+}
+
 export const getRepositoryLeaderboard = async (
   repoUrl: string
-): Promise<any> => {
+): Promise<LeaderboardResponse> => {
   logger.debug(repoUrl);
   const response = await axios.get(`/api/leaderboard?repoUrl=${repoUrl}`);
   logger.debug(response.data);
-  return response.data.top_contributors;
+  return {
+    top_contributors: response.data.top_contributors || [],
+    isPartial: response.data.isPartial || false,
+    repository: response.data.repository,
+  };
 };
 
 export const retryRepository = async (

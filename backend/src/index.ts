@@ -234,13 +234,30 @@ const startServer = async () => {
           });
         }
 
+        // Check if commits have been processed
+        const hasCommitsProcessed = !!dbRepository.commitsProcessedAt;
+
         switch (dbRepository.state) {
           case 'commits_processing':
-          case 'users_processing':
           case 'pending':
+            // Commits not processed yet, can't show leaderboard
             return reply
               .status(202)
-              .send({ message: 'Repository still processing.' });
+              .send({ message: 'Repository still processing commits.' });
+          case 'users_processing':
+            // Commits are processed, we can show leaderboard even if user processing is ongoing
+            if (hasCommitsProcessed) {
+              const leaderboard =
+                await getLeaderboardForRepository(dbRepository);
+              return reply.status(200).send({
+                ...leaderboard,
+              });
+            } else {
+              // Shouldn't happen, but handle gracefully
+              return reply
+                .status(202)
+                .send({ message: 'Repository still processing commits.' });
+            }
           case 'completed':
             const leaderboard = await getLeaderboardForRepository(dbRepository);
             return reply.status(200).send({

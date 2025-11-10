@@ -13,19 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Trophy, GitCommit } from 'lucide-react';
+import { Trophy, GitCommit, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Layout } from '@/components/Layout';
-import { getRepositoryLeaderboard } from '@/services/repositoryService';
+import { getRepositoryLeaderboard, LeaderboardResponse } from '@/services/repositoryService';
 import { buildRepoUrl } from '@/lib/repoUtils';
-
-interface Contributor {
-  commitCount: number;
-  username: string;
-  email: string;
-  profileUrl: string;
-}
 
 export default function LeaderboardPage() {
   const params = useParams();
@@ -35,13 +28,20 @@ export default function LeaderboardPage() {
   const repoUrl = buildRepoUrl(owner, repoName);
 
   const {
-    data: contributors,
+    data: leaderboardData,
     isLoading,
     isError,
-  } = useQuery<Contributor[]>({
+  } = useQuery<LeaderboardResponse>({
     queryKey: ['leaderboard', repoUrl],
     queryFn: () => getRepositoryLeaderboard(repoUrl),
+    refetchInterval: (query) => {
+      // Auto-refetch if data is partial (user processing still ongoing)
+      return query.state.data?.isPartial ? 5000 : false;
+    },
   });
+
+  const contributors = leaderboardData?.top_contributors || [];
+  const isPartial = leaderboardData?.isPartial || false;
 
   const handleBack = () => {
     router.push('/');
@@ -108,6 +108,20 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
+        {/* Partial Data Indicator */}
+        {isPartial && (
+          <Card className="w-full border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <p className="text-sm font-medium">
+                  Enriching contributor profiles... Some usernames may appear as emails until processing completes.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Leaderboard Card */}
         <Card className="w-full border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
           <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
@@ -151,32 +165,59 @@ export default function LeaderboardPage() {
                     </TableCell>
                     <TableCell className="py-4">
                       <div className="flex items-center gap-3">
-                        <a
-                          href={contributor.profileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-shrink-0"
-                        >
-                          <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
-                            <AvatarImage
-                              src={`https://github.com/${contributor.username}.png`}
-                            />
-                            <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-400 text-white font-semibold">
-                              {contributor.username?.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </a>
-                        <div className="min-w-0">
+                        {contributor.profileUrl ? (
                           <a
                             href={contributor.profileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors block truncate"
+                            className="flex-shrink-0"
                           >
-                            {contributor.username || 'Unknown'}
+                            <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
+                              <AvatarImage
+                                src={
+                                  contributor.username
+                                    ? `https://github.com/${contributor.username}.png`
+                                    : undefined
+                                }
+                              />
+                              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-400 text-white font-semibold">
+                                {contributor.username
+                                  ? contributor.username.slice(0, 2).toUpperCase()
+                                  : contributor.email.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
                           </a>
+                        ) : (
+                          <div className="flex-shrink-0">
+                            <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
+                              <AvatarFallback className="bg-gradient-to-br from-gray-400 to-gray-500 text-white font-semibold">
+                                {contributor.email.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          {contributor.profileUrl ? (
+                            <a
+                              href={contributor.profileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors block truncate"
+                            >
+                              {contributor.username || contributor.email}
+                            </a>
+                          ) : (
+                            <span className="font-semibold text-gray-900 dark:text-white block truncate">
+                              {contributor.username || contributor.email}
+                            </span>
+                          )}
                           <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                             {contributor.email}
+                            {contributor.username && contributor.email !== contributor.username && (
+                              <span className="ml-2 text-xs text-gray-500 dark:text-gray-500">
+                                ({contributor.username})
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>

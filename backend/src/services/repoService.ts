@@ -402,22 +402,99 @@ export const generateLeaderboard = async (
   }
 };
 
+/**
+ * Build leaderboard from CommitData when RepositoryContributor data isn't ready yet
+ * This allows showing the leaderboard once commits are processed, even if user processing is ongoing
+ */
+export const getLeaderboardFromCommitData = async (dbRepository: any) => {
+  const commitData = await prisma.commitData.findMany({
+    where: { repositoryId: dbRepository.id },
+    orderBy: { commitCount: 'desc' },
+  });
+
+  if (commitData.length === 0) {
+    return {
+      repository: dbRepository.url,
+      top_contributors: [],
+      isPartial: false,
+    };
+  }
+
+  // Get all emails from commit data
+  const emails = commitData.map((commit) => commit.authorEmail);
+
+  // Fetch all contributors in one query
+  const contributors = await prisma.contributor.findMany({
+    where: {
+      email: { in: emails },
+    },
+  });
+
+  // Create a map for quick lookup
+  const contributorMap = new Map(
+    contributors.map((c) => [c.email, c])
+  );
+
+  // Enrich commit data with contributor information
+  const enrichedContributors = commitData.map((commit) => {
+    const contributor = contributorMap.get(commit.authorEmail);
+
+    return {
+      username: contributor?.username || null,
+      profileUrl: contributor?.profileUrl || null,
+      commitCount: commit.commitCount,
+      email: commit.authorEmail,
+      isEnriched: !!contributor, // Flag to indicate if user data is available
+    };
+  });
+
+  return {
+    repository: dbRepository.url,
+    top_contributors: enrichedContributors,
+    isPartial: enrichedContributors.some((c) => !c.isEnriched), // Indicates some data is still being processed
+  };
+};
+
 export const getLeaderboardForRepository = async (dbRepository: any) => {
-  const leaderboard = await prisma.repositoryContributor.findMany({
+  // Check if commits have been processed
+  const hasCommitsProcessed = !!dbRepository.commitsProcessedAt;
+
+  if (!hasCommitsProcessed) {
+    // No commit data available yet
+    return {
+      repository: dbRepository.url,
+      top_contributors: [],
+      isPartial: false,
+    };
+  }
+
+  // Try to get leaderboard from RepositoryContributor (complete data)
+  const repositoryContributors = await prisma.repositoryContributor.findMany({
     where: { repositoryId: dbRepository.id },
     include: { contributor: true },
     orderBy: { commitCount: 'desc' },
   });
 
-  return {
-    repository: dbRepository.url,
-    top_contributors: leaderboard.map(({ contributor, commitCount }) => {
-      return {
-        username: contributor.username,
-        profileUrl: contributor.profileUrl,
-        commitCount: commitCount,
-        email: contributor.email,
-      };
-    }),
-  };
+  // If we have RepositoryContributor data, use it (most complete)
+  if (repositoryContributors.length > 0) {
+    return {
+      repository: dbRepository.url,
+      top_contributors: repositoryContributors.map(
+        ({ contributor, commitCount }) => {
+          return {
+            username: contributor.username,
+            profileUrl: contributor.profileUrl,
+            commitCount: commitCount,
+            email: contributor.email,
+            isEnriched: true,
+          };
+        }
+      ),
+      isPartial: false,
+    };
+  }
+
+  // Fallback to CommitData if RepositoryContributor isn't ready yet
+  // This happens when commits are processed but user processing is still ongoing
+  return await getLeaderboardFromCommitData(dbRepository);
 };
