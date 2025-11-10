@@ -13,12 +13,14 @@ export const DemoExperience: React.FC = () => {
       <div className="text-center space-y-6 py-8">
         <div className="flex items-center justify-center gap-3">
           <Sparkles className="h-10 w-10 text-yellow-500 animate-pulse" />
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent py-1">
             GitHub Contributor Insights
           </h1>
         </div>
         <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
-          Discover who's contributing most to your favorite repositories. Explore detailed contributor leaderboards, analyze commit statistics, and identify your project's top contributors.
+          Discover who&apos;s contributing most to your favorite repositories.
+          Explore detailed contributor leaderboards, analyze commit statistics,
+          and identify your project&apos;s top contributors.
         </p>
       </div>
 
@@ -31,8 +33,12 @@ export const DemoExperience: React.FC = () => {
                 <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">6</span>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Demo Repositories Ready</p>
+                <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                  6
+                </span>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Demo Repositories Ready
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900/50 rounded-lg border border-purple-100 dark:border-purple-800/30">
@@ -40,8 +46,12 @@ export const DemoExperience: React.FC = () => {
                 <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">100%</span>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completely Free</p>
+                <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+                  100%
+                </span>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Completely Free
+                </p>
               </div>
             </div>
           </div>
@@ -56,4 +66,3 @@ export const DemoExperience: React.FC = () => {
     </div>
   );
 };
-

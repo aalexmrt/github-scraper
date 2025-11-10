@@ -78,7 +78,7 @@ export function LeaderBoard({ repoUrl }: LeaderBoardProps) {
         </h1>
         <div className="space-y-2">
           <p className="text-base text-gray-600 dark:text-gray-400">
-            Ranked by commit count - See who's driving this project forward
+            Ranked by commit count - See who&apos;s driving this project forward
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500">
             Repository:{' '}

@@ -6,6 +6,7 @@ import { pipeline } from 'stream/promises';
 import path from 'path';
 import simpleGit from 'simple-git';
 import { StorageAdapter } from './StorageAdapter';
+import { logger } from '../../utils/logger';
 
 const execAsync = promisify(exec);
 const TEMP_REPO_PATH = '/tmp/repos';
@@ -130,7 +131,7 @@ export class R2StorageAdapter implements StorageAdapter {
         })
       );
     } catch (error) {
-      console.error(`Failed to delete ${repoPath} from R2:`, error);
+      logger.error(`Failed to delete ${repoPath} from R2:`, error);
     }
 
     // Delete local temp copy if exists
@@ -178,9 +179,9 @@ export class R2StorageAdapter implements StorageAdapter {
       // Remove archive
       rmSync(archivePath);
 
-      console.log(`Downloaded and extracted ${repoPath} from R2`);
+      logger.info(`Downloaded and extracted ${repoPath} from R2`);
     } catch (error) {
-      console.error(`Failed to download ${repoPath} from R2:`, error);
+      logger.error(`Failed to download ${repoPath} from R2:`, error);
       throw error;
     }
   }
@@ -210,9 +211,9 @@ export class R2StorageAdapter implements StorageAdapter {
       // Remove archive
       rmSync(archivePath);
 
-      console.log(`Compressed and uploaded ${repoPath} to R2`);
+      logger.info(`Compressed and uploaded ${repoPath} to R2`);
     } catch (error) {
-      console.error(`Failed to upload ${repoPath} to R2:`, error);
+      logger.error(`Failed to upload ${repoPath} to R2:`, error);
       throw error;
     }
   }

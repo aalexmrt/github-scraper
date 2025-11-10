@@ -11,7 +11,9 @@ JOB_NAME=${JOB_NAME:-"github-scraper-worker"}
 SCHEDULER_NAME="${JOB_NAME}-scheduler"
 
 # Get the service account email (default compute service account)
-SERVICE_ACCOUNT_EMAIL="${PROJECT_ID}@appspot.gserviceaccount.com"
+# Use compute service account instead of appspot
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+SERVICE_ACCOUNT_EMAIL="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
 echo "⏰ Setting up Cloud Scheduler for ${JOB_NAME}..."
 

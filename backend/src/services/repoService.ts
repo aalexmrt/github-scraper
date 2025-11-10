@@ -2,6 +2,7 @@ import simpleGit from 'simple-git';
 import axios from 'axios';
 import prisma from '../utils/prisma';
 import { createStorageAdapter } from './storage/storageFactory';
+import { logger } from '../utils/logger';
 
 export interface DbRepository {
   id: number;
@@ -57,7 +58,7 @@ export const syncRepository = async (
         `Permission denied: Ensure you have access to the repository ${dbRepository.url}`
       );
     } else {
-      console.error(`Error processing repository: ${error.message}`);
+      logger.error(`Error processing repository: ${error.message}`);
       throw new Error(`Failed to process repository: ${error.message}`);
     }
   }
@@ -75,12 +76,12 @@ async function getDbUser(
   const username = isNoReply
     ? author_email.split('@')[0].split('+')[1] || author_email.split('@')[0]
     : null;
-  console.log(username, 'username');
+  logger.debug(username, 'username');
   dbUser =
     usersCache.get(author_email) ||
     (username ? usersCache.get(username) : null);
   if (dbUser) return dbUser;
-  console.log(dbUser, 'dbUser from here');
+  logger.debug(dbUser, 'dbUser from here');
 
   // Query database for existing user
   dbUser = await prisma.contributor.findFirst({
@@ -95,11 +96,11 @@ async function getDbUser(
     const twentyFourHoursAgo = Date.now() - TWENTY_FOUR_HOURS;
 
     if (!isNoReply && dbUser.updatedAt.getTime() < twentyFourHoursAgo) {
-      console.log('Fetching updated profile from GitHub...');
+      logger.info('Fetching updated profile from GitHub...');
       try {
         const token = githubToken || process.env.GITHUB_TOKEN;
         if (!token || token === 'your_token_optional') {
-          console.warn('No valid GitHub token available for API call');
+          logger.warn('No valid GitHub token available for API call');
           return dbUser;
         }
         const response = await axios.get(
@@ -121,18 +122,18 @@ async function getDbUser(
             },
           });
 
-          console.log(dbUser, 'dbUser updated from GitHub');
+          logger.debug(dbUser, 'dbUser updated from GitHub');
           usersCache.set(author_email, dbUser);
           if (username) usersCache.set(username, dbUser);
           return dbUser;
         }
       } catch (error: any) {
-        console.error(
+        logger.error(
           error,
           'Failed to fetch GitHub user for email:',
           author_email
         );
-        console.error(error.response?.data?.message || error.message);
+        logger.error(error.response?.data?.message || error.message);
       }
     }
 
@@ -147,7 +148,7 @@ async function getDbUser(
     try {
       const token = githubToken || process.env.GITHUB_TOKEN;
       if (!token || token === 'your_token_optional') {
-        console.warn('No valid GitHub token available for API call');
+        logger.warn('No valid GitHub token available for API call');
         // Create user with email only if no token available
         dbUser = await prisma.contributor.create({
           data: { email: author_email },
@@ -183,19 +184,19 @@ async function getDbUser(
         return dbUser;
       }
     } catch (error: any) {
-      console.error(
+      logger.error(
         error,
         'Failed to fetch GitHub user for email:',
         author_email
       );
       const errorMessage = error.response?.data?.message || error.message;
       const statusCode = error.response?.status;
-      console.error(errorMessage);
+      logger.error(errorMessage);
       
       // Handle different error cases gracefully
       if (statusCode === 401 || errorMessage.includes('Bad credentials')) {
         // Invalid token - create user with email only
-        console.warn('Invalid GitHub token, creating user with email only');
+        logger.warn('Invalid GitHub token, creating user with email only');
         dbUser = await prisma.contributor.create({
           data: { email: author_email },
         });
@@ -204,7 +205,7 @@ async function getDbUser(
       } else if (errorMessage.includes('API rate limit exceeded')) {
         // if we have hit the API rate limit, we should indicate our program that we need to wait for a while
         // For now, create user with email only
-        console.warn('GitHub API rate limit exceeded, creating user with email only');
+        logger.warn('GitHub API rate limit exceeded, creating user with email only');
         dbUser = await prisma.contributor.create({
           data: { email: author_email },
         });
@@ -212,7 +213,7 @@ async function getDbUser(
         return dbUser;
       } else {
         // Other errors - create user with email only instead of failing completely
-        console.warn(`GitHub API error (${statusCode}): ${errorMessage}, creating user with email only`);
+        logger.warn(`GitHub API error (${statusCode}): ${errorMessage}, creating user with email only`);
         dbUser = await prisma.contributor.create({
           data: { email: author_email },
         });
@@ -227,11 +228,11 @@ async function getDbUser(
       ? { username, profileUrl: `https://github.com/${username}` }
       : { email: author_email },
   });
-  console.log(dbUser, 'dbUser from here 2.75');
+  logger.debug(dbUser, 'dbUser from here 2.75');
   // Add to cache
   usersCache.set(author_email, dbUser);
   if (username) usersCache.set(username, dbUser);
-  console.log(dbUser, 'dbUser from here 3');
+  logger.debug(dbUser, 'dbUser from here 3');
   return dbUser;
 }
 
@@ -256,7 +257,7 @@ export const generateLeaderboard = async (
       }
 
       const dbUser = await getDbUser(author_email, usersCache, githubToken);
-      console.log(dbUser, 'dbUser');
+      logger.debug(dbUser, 'dbUser');
       if (repositoryContributorCache.has(dbUser.id)) {
         repositoryContributorCache.set(dbUser.id, {
           id: dbUser.id,
@@ -291,7 +292,7 @@ export const generateLeaderboard = async (
         )
       )
       .catch((error) => {
-        console.error('Transaction failed: ', error);
+        logger.error('Transaction failed: ', error);
         // Handle specific errors or rethrow if necessary
         throw error;
       });
@@ -303,7 +304,7 @@ export const generateLeaderboard = async (
     return leaderboard;
   } catch (error: any) {
     // Log any errors that occur during the leaderboard generation
-    console.error(`Error generating leaderboard: ${error.message}`);
+    logger.error(`Error generating leaderboard: ${error.message}`);
     // Rethrow the error to indicate failure
     throw new Error(`Failed to generate leaderboard: ${error.message}`);
   }

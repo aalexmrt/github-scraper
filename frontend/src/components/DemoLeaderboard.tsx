@@ -4,7 +4,6 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { LeaderBoard } from './LeaderBoard';
 import { Layout } from './Layout';
-import { useRouter } from 'next/navigation';
 
 interface DemoLeaderboardProps {
   repoUrl: string;
@@ -17,7 +16,6 @@ export const DemoLeaderboard: React.FC<DemoLeaderboardProps> = ({
   repoName,
   onBack,
 }) => {
-  const router = useRouter();
 
   // Extract repo name from URL if not provided
   const displayName =

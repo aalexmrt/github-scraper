@@ -37,7 +37,7 @@ export const DemoCTA: React.FC = () => {
               </div>
               <h3 className="font-semibold">Track Contributors</h3>
               <p className="text-sm text-muted-foreground text-center">
-                See who's contributing most and identify key team members
+                See who&apos;s contributing most and identify key team members
               </p>
             </div>
 

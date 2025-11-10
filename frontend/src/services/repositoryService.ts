@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 // Configure axios to include credentials (cookies) in all requests
 axios.defaults.withCredentials = true;
@@ -18,9 +19,9 @@ export const fetchRepositories = async (): Promise<Repository[]> => {
 export const getRepositoryLeaderboard = async (
   repoUrl: string
 ): Promise<any> => {
-  console.log(repoUrl);
+  logger.debug(repoUrl);
   const response = await axios.get(`/api/leaderboard?repoUrl=${repoUrl}`);
-  console.log(response.data);
+  logger.debug(response.data);
   return response.data.top_contributors;
 };
 

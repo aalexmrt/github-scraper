@@ -2,6 +2,7 @@ import prisma from './prisma';
 import { repoQueue } from '../services/queueService';
 import { normalizeRepoUrl } from './normalizeUrl';
 import { isValidGitHubUrl } from './isValidGitHubUrl';
+import { logger } from './logger';
 
 // Demo repositories - small, resource-friendly repos
 export const DEMO_REPOS = [
@@ -74,7 +75,7 @@ export async function populateDemoRepos(options: { silent?: boolean } = {}): Pro
   const { silent = false } = options;
   
   if (!silent) {
-    console.log('🚀 Starting demo repos population...\n');
+    logger.info('🚀 Starting demo repos population...\n');
   }
 
   const result: PopulateResult = {
@@ -89,7 +90,7 @@ export async function populateDemoRepos(options: { silent?: boolean } = {}): Pro
       // Validate URL
       if (!isValidGitHubUrl(repo.url)) {
         if (!silent) {
-          console.error(`❌ Invalid GitHub URL: ${repo.url}`);
+          logger.error(`❌ Invalid GitHub URL: ${repo.url}`);
         }
         result.errors++;
         continue;
@@ -99,7 +100,7 @@ export async function populateDemoRepos(options: { silent?: boolean } = {}): Pro
       const repoName = repo.name || normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
 
       if (!silent) {
-        console.log(`📦 Processing: ${repo.owner}/${repo.name}...`);
+        logger.info(`📦 Processing: ${repo.owner}/${repo.name}...`);
       }
 
       // Check if repository already exists
@@ -118,12 +119,12 @@ export async function populateDemoRepos(options: { silent?: boolean } = {}): Pro
           },
         });
         if (!silent) {
-          console.log(`   ✅ Created repository entry`);
+          logger.info(`   ✅ Created repository entry`);
         }
         result.created++;
       } else {
         if (!silent) {
-          console.log(`   ℹ️  Repository already exists (state: ${dbRepository.state})`);
+          logger.info(`   ℹ️  Repository already exists (state: ${dbRepository.state})`);
         }
       }
 
@@ -136,43 +137,43 @@ export async function populateDemoRepos(options: { silent?: boolean } = {}): Pro
         // Bull handles duplicate jobs, so it's safe to add even if already queued
         await repoQueue.add({ dbRepository, token });
         if (!silent) {
-          console.log(`   📤 Added to processing queue${token ? ' (with GitHub token)' : ' (no token - public repos only)'}`);
+          logger.info(`   📤 Added to processing queue${token ? ' (with GitHub token)' : ' (no token - public repos only)'}`);
         }
         result.queued++;
       } else {
         if (!silent) {
-          console.log(`   ⏭️  Skipped (already completed)`);
+          logger.info(`   ⏭️  Skipped (already completed)`);
         }
         result.skipped++;
       }
 
       if (!silent) {
-        console.log('');
+        logger.info('');
       }
     } catch (error: any) {
       if (!silent) {
-        console.error(`❌ Error processing ${repo.url}:`, error.message);
+        logger.error(`❌ Error processing ${repo.url}:`, error.message);
       }
       result.errors++;
       if (!silent) {
-        console.log('');
+        logger.info('');
       }
     }
   }
 
   if (!silent) {
     // Summary
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 Summary:');
-    console.log(`   ✅ Created: ${result.created}`);
-    console.log(`   📤 Queued: ${result.queued}`);
-    console.log(`   ⏭️  Skipped: ${result.skipped}`);
-    console.log(`   ❌ Errors: ${result.errors}`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('📊 Summary:');
+    logger.info(`   ✅ Created: ${result.created}`);
+    logger.info(`   📤 Queued: ${result.queued}`);
+    logger.info(`   ⏭️  Skipped: ${result.skipped}`);
+    logger.info(`   ❌ Errors: ${result.errors}`);
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     if (result.queued > 0) {
-      console.log('⏳ Repositories have been queued for processing.');
-      console.log('   Monitor the worker logs to see processing progress.\n');
+      logger.info('⏳ Repositories have been queued for processing.');
+      logger.info('   Monitor the worker logs to see processing progress.\n');
     }
   }
 

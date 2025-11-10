@@ -1,6 +1,7 @@
 import { repoQueue } from '../services/queueService';
 import { syncRepository, generateLeaderboard } from '../services/repoService';
 import prisma from '../utils/prisma';
+import { logger } from '../utils/logger';
 
 repoQueue.process(async (job) => {
   const { dbRepository, token = null } = job.data;
@@ -29,7 +30,7 @@ repoQueue.process(async (job) => {
       where: { id: dbRepository.id },
       data: { state: 'failed' },
     });
-    console.error(
+    logger.error(
       `Failed to process repository ${dbRepository.url}: ${error.message}`
     );
     throw error; // Ensures the job is marked as failed

@@ -1,6 +1,7 @@
 import { repoQueue } from '../services/queueService';
 import { syncRepository, generateLeaderboard } from '../services/repoService';
 import prisma from '../utils/prisma';
+import { logger } from '../utils/logger';
 
 /**
  * Cloud Run Jobs-compatible worker
@@ -10,9 +11,9 @@ async function processOneJob() {
   try {
     // Get waiting jobs from the queue
     const waitingJobs = await repoQueue.getWaiting();
-    
+
     if (waitingJobs.length === 0) {
-      console.log('[WORKER] No jobs in queue, exiting gracefully');
+      logger.info('[WORKER] No jobs in queue, exiting gracefully');
       await prisma.$disconnect();
       await repoQueue.close();
       process.exit(0);
@@ -20,8 +21,10 @@ async function processOneJob() {
 
     // Process the first waiting job
     const job = waitingJobs[0];
-    console.log(`[WORKER] Processing job ${job.id} for repository: ${job.data.dbRepository.url}`);
-    
+    logger.info(
+      `[WORKER] Processing job ${job.id} for repository: ${job.data.dbRepository.url}`
+    );
+
     const { dbRepository, token = null } = job.data;
 
     try {
@@ -43,8 +46,10 @@ async function processOneJob() {
       });
 
       await job.remove(); // Remove completed job from queue
-      console.log(`[WORKER] Successfully processed repository ${dbRepository.url}`);
-      
+      logger.info(
+        `[WORKER] Successfully processed repository ${dbRepository.url}`
+      );
+
       await prisma.$disconnect();
       await repoQueue.close();
       process.exit(0);
@@ -53,20 +58,20 @@ async function processOneJob() {
         where: { id: dbRepository.id },
         data: { state: 'failed' },
       });
-      
-      console.error(
+
+      logger.error(
         `[WORKER] Failed to process repository ${dbRepository.url}: ${error.message}`
       );
-      
+
       // Move job to failed state (Bull will handle retries if configured)
       await job.moveToFailed(error as Error);
-      
+
       await prisma.$disconnect();
       await repoQueue.close();
       process.exit(1);
     }
   } catch (error: any) {
-    console.error('[WORKER] Error getting job from queue:', error.message);
+    logger.error('[WORKER] Error getting job from queue:', error.message);
     await prisma.$disconnect();
     await repoQueue.close();
     process.exit(1);
@@ -76,19 +81,18 @@ async function processOneJob() {
 // Run migrations first, then process one job
 async function main() {
   try {
-    console.log('[WORKER] Running database migrations...');
+    logger.info('[WORKER] Running database migrations...');
     const { execSync } = require('child_process');
     execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-    console.log('[WORKER] Migrations completed');
-    
-    console.log('[WORKER] Starting job processing...');
+    logger.info('[WORKER] Migrations completed');
+
+    logger.info('[WORKER] Starting job processing...');
     await processOneJob();
   } catch (error: any) {
-    console.error('[WORKER] Fatal error:', error.message);
+    logger.error('[WORKER] Fatal error:', error.message);
     await prisma.$disconnect();
     process.exit(1);
   }
 }
 
 main();
-

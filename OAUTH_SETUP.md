@@ -13,29 +13,44 @@ The application now supports GitHub OAuth authentication, allowing users to sign
 
 **Architecture Note:** The backend runs in Docker containers, while the frontend runs locally on your machine. This setup allows for faster frontend development while keeping backend services containerized.
 
-## Step 1: Create a GitHub OAuth App
+## Step 1: Create GitHub OAuth Apps
+
+**Important:** You need to create **TWO separate OAuth Apps** - one for development and one for production. GitHub only allows one callback URL per OAuth app, so we use separate apps for each environment.
+
+### Development OAuth App
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Click **"New OAuth App"**
 3. Fill in the application details:
-   - **Application name**: `GitHub Scraper` (or your preferred name)
-   - **Homepage URL**:
-     - Development: `http://localhost:3001` (frontend runs locally on port 3001)
-     - Production: Your production frontend URL
-   - **Authorization callback URL**:
-     - Development: `http://localhost:3000/auth/github/callback` (backend runs in Docker on port 3000)
-     - Production: `https://your-backend-domain.com/auth/github/callback`
+   - **Application name**: `GitHub Scraper (Dev)` (or your preferred name)
+   - **Homepage URL**: `http://localhost:3001`
+   - **Authorization callback URL**: `http://localhost:3000/auth/github/callback`
 4. Click **"Register application"**
 5. Copy the **Client ID** and generate a **Client Secret**
+6. Save these for your local `.env` file
+
+### Production OAuth App
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **"New OAuth App"** again
+3. Fill in the application details:
+   - **Application name**: `GitHub Scraper (Prod)` (or your preferred name)
+   - **Homepage URL**: Your Vercel production URL (e.g., `https://github-scraper-xxx.vercel.app`)
+   - **Authorization callback URL**: `https://api-sgmtwgzrlq-ue.a.run.app/auth/github/callback` (your Cloud Run backend URL)
+4. Click **"Register application"**
+5. Copy the **Client ID** and generate a **Client Secret**
+6. Save these for GCP Secret Manager (use `create-secrets.sh` script)
 
 ## Step 2: Environment Variables
+
+### Local Development
 
 Create a `.env` file in the **root directory** of the project:
 
 ```env
-# GitHub OAuth App Credentials
-GITHUB_CLIENT_ID=your_github_oauth_client_id
-GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+# GitHub OAuth App Credentials (Development)
+GITHUB_CLIENT_ID=your_dev_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_dev_github_oauth_client_secret
 
 # Application URLs
 # Frontend runs locally on port 3001, backend runs in Docker on port 3000
@@ -59,14 +74,25 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 - Generate it using: `openssl rand -base64 32`
 - The **frontend runs locally** on port **3001** (not in Docker)
 - The **backend runs in Docker** on port **3000**
+- Use the **Development OAuth App** credentials in your local `.env` file
 
-**For Production:**
+### Production
 
-Update the URLs in your `.env` file:
+For production, secrets are stored in **GCP Secret Manager** and configured in `cloudrun.yaml`. Use the `create-secrets.sh` script to set them up:
 
-- `FRONTEND_URL=https://your-frontend-domain.com`
-- `BACKEND_URL=https://your-backend-domain.com`
-- `NEXT_PUBLIC_API_URL=https://your-backend-domain.com`
+```bash
+./create-secrets.sh
+```
+
+The script will prompt you for:
+- `GITHUB_CLIENT_ID` (Production OAuth App)
+- `GITHUB_CLIENT_SECRET` (Production OAuth App)
+- `FRONTEND_URL` (Your Vercel production URL)
+- `BACKEND_URL` (Your Cloud Run URL, defaults to `https://api-sgmtwgzrlq-ue.a.run.app`)
+
+**Production URLs:**
+- `FRONTEND_URL`: Your Vercel production URL (e.g., `https://github-scraper-xxx.vercel.app`)
+- `BACKEND_URL`: Your Cloud Run URL (e.g., `https://api-sgmtwgzrlq-ue.a.run.app`)
 
 ## Step 3: Database Migration
 
@@ -214,33 +240,52 @@ The frontend will start on **http://localhost:3001**
 
 ## Production Deployment
 
+### Setting Up Production Secrets
+
+1. **Create Production OAuth App** (see Step 1 above)
+2. **Run the secrets setup script:**
+   ```bash
+   ./create-secrets.sh
+   ```
+   This will prompt you for all production secrets including:
+   - GitHub OAuth credentials (Production app)
+   - Frontend URL (Vercel)
+   - Backend URL (Cloud Run)
+
+3. **Update Cloud Run service:**
+   ```bash
+   gcloud run services replace cloudrun.yaml \
+     --project=personal-gcp-477623 \
+     --region=us-east1
+   ```
+
 ### Additional Considerations
 
-1. **HTTPS Required**: OAuth requires HTTPS in production
-2. **Session Storage**: Consider using Redis for session storage in production:
-   ```env
-   REDIS_URL=redis://your-redis-url:6379
-   ```
-3. **Environment Variables**: Use secure secret management (e.g., AWS Secrets Manager, HashiCorp Vault)
+1. **HTTPS Required**: OAuth requires HTTPS in production ✅ (Cloud Run and Vercel both use HTTPS)
+2. **Session Storage**: Redis is already configured for session storage in production ✅
+3. **Environment Variables**: Secrets are stored in GCP Secret Manager ✅
 4. **Rate Limiting**: Consider adding rate limiting to OAuth endpoints
 5. **Token Refresh**: GitHub tokens don't expire, but consider implementing token refresh logic
 
-### Docker Deployment
+### Local Development Setup
 
 The `docker-compose.services.yml` file has already been updated with the necessary environment variables. Make sure your root `.env` file contains all the required values (see Step 2).
 
 **Quick Setup Summary:**
 
-1. Create `.env` file in root directory with all required variables (set `FRONTEND_URL=http://localhost:3001`)
-2. Start backend services: `docker-compose -f docker-compose.services.yml up -d` or `./start-services.sh`
-3. Run migrations: `docker-compose -f docker-compose.services.yml exec backend npx prisma migrate dev --name add_user_model`
-4. Start frontend locally: `cd frontend && pnpm run dev`
-5. Access frontend at http://localhost:3001
+1. Create `.env` file in root directory with **Development OAuth App** credentials
+2. Set `FRONTEND_URL=http://localhost:3001` and `BACKEND_URL=http://localhost:3000`
+3. Start backend services: `docker-compose -f docker-compose.services.yml up -d` or `./start-services.sh`
+4. Run migrations: `docker-compose -f docker-compose.services.yml exec backend npx prisma migrate dev --name add_user_model`
+5. Start frontend locally: `cd frontend && pnpm run dev`
+6. Access frontend at http://localhost:3001
 
 **Important:**
 
 - Backend runs in Docker, frontend runs locally
 - All backend operations (migrations, npm commands, etc.) must be run inside the Docker container using `docker-compose -f docker-compose.services.yml exec backend`
+- Use **Development OAuth App** credentials in local `.env` file
+- Use **Production OAuth App** credentials in GCP Secret Manager
 
 ## API Endpoints
 

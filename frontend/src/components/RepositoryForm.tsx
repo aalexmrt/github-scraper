@@ -168,7 +168,7 @@ export const RepositoryForm: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Your token is only used for this request and won't be
+                        Your token is only used for this request and won&apos;t be
                         stored.
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -176,9 +176,7 @@ export const RepositoryForm: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            const backendUrl =
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              'http://localhost:3000';
+                            const backendUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
                             window.location.href = `${backendUrl}/auth/github`;
                           }}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"

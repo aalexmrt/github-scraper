@@ -10,12 +10,13 @@ spec:
       annotations:
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/cpu-throttling: 'true'
+        run.googleapis.com/startup-cpu-boost: 'true'
         autoscaling.knative.dev/minScale: '0'
         autoscaling.knative.dev/maxScale: '3'
         autoscaling.knative.dev/target: '80'
     spec:
       containerConcurrency: 80
-      timeoutSeconds: 60
+      timeoutSeconds: 300
       containers:
         - image: gcr.io/personal-gcp-477623/api:latest
           ports:
@@ -81,10 +82,26 @@ spec:
                 secretKeyRef:
                   name: session-secret
                   key: latest
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: github-client-id
+                  key: latest
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: github-client-secret
+                  key: latest
             - name: FRONTEND_URL
-              value: 'https://YOUR_FIREBASE_PROJECT.web.app'
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-url
+                  key: latest
             - name: BACKEND_URL
-              value: 'https://api-YOUR_HASH.us-east1.run.app'
+              valueFrom:
+                secretKeyRef:
+                  name: backend-url
+                  key: latest
   traffic:
     - percent: 100
       latestRevision: true

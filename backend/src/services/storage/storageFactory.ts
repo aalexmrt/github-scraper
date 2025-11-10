@@ -1,6 +1,7 @@
 import { StorageAdapter } from './StorageAdapter';
 import { FilesystemStorageAdapter } from './FilesystemStorageAdapter';
 import { R2StorageAdapter } from './R2StorageAdapter';
+import { logger } from '../../utils/logger';
 
 /**
  * Factory to create the appropriate storage adapter based on environment
@@ -10,10 +11,10 @@ export function createStorageAdapter(): StorageAdapter {
   const useR2 = process.env.USE_R2_STORAGE === 'true';
   
   if (useR2) {
-    console.log('Using Cloudflare R2 storage adapter');
+    logger.info('Using Cloudflare R2 storage adapter');
     return new R2StorageAdapter();
   } else {
-    console.log('Using filesystem storage adapter');
+    logger.info('Using filesystem storage adapter');
     return new FilesystemStorageAdapter();
   }
 }

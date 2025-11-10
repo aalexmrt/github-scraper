@@ -13,7 +13,9 @@ declare module 'fastify' {
     session: {
       userId?: number;
       githubToken?: string;
+      id?: string;
       destroy(): Promise<void>;
+      save(): Promise<void>;
     };
   }
 }

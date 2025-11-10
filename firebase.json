@@ -1,6 +1,7 @@
 {
   "hosting": {
-    "public": ".next/out",
+    "site": "personal-gcp-477623-2d419",
+    "public": "frontend/out",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "cleanUrls": true,
     "headers": [

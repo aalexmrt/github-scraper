@@ -33,14 +33,17 @@ RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Create directory for repos
 RUN mkdir -p /data/repos
 
 EXPOSE 3000
 
-# Run migrations and start server
-# If migrations fail, log the error but continue (migrations might already be applied)
-# Use explicit error handling to ensure server starts even if migrations fail
-# Use set -x for debugging and ensure all output goes to stdout/stderr
-CMD ["sh", "-c", "set -x; echo '=== Starting container ==='; echo 'Running database migrations...'; npx prisma migrate deploy || echo 'WARNING: Migration failed or already applied, continuing anyway...'; echo 'Starting server...'; exec npm start"]
+# Override entrypoint - Node.js base image has docker-entrypoint.sh which interferes
+# Set explicit entrypoint so Cloud Run executes our script directly
+ENTRYPOINT ["/bin/sh"]
+CMD ["/app/start.sh"]
 

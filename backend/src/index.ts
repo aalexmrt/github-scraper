@@ -9,6 +9,7 @@ import { normalizeRepoUrl } from './utils/normalizeUrl';
 import { authRoutes } from './routes/auth';
 import { getUserToken } from './utils/getUserToken';
 import { populateDemoRepos } from './utils/populateDemoRepos';
+import { logger } from './utils/logger';
 
 dotenv.config();
 
@@ -17,8 +18,8 @@ const app = fastify({ logger: true });
 // Start the server
 const startServer = async () => {
   try {
-    console.log('[SERVER] Starting server...');
-    console.log('[SERVER] Environment:', {
+    logger.info('[SERVER] Starting server...');
+    logger.info('[SERVER] Environment:', {
       NODE_ENV: process.env.NODE_ENV,
       FRONTEND_URL: process.env.FRONTEND_URL,
       BACKEND_URL: process.env.BACKEND_URL,
@@ -28,48 +29,56 @@ const startServer = async () => {
 
     // Populate demo repos if enabled
     if (process.env.POPULATE_DEMO_REPOS === 'true') {
-      console.log('[SERVER] POPULATE_DEMO_REPOS is enabled, populating demo repositories...');
+      logger.info('[SERVER] POPULATE_DEMO_REPOS is enabled, populating demo repositories...');
       try {
         await populateDemoRepos({ silent: false });
-        console.log('[SERVER] Demo repositories population completed.');
+        logger.info('[SERVER] Demo repositories population completed.');
       } catch (error) {
-        console.error('[SERVER] Error populating demo repos:', error);
+        logger.error('[SERVER] Error populating demo repos:', error);
         // Don't fail server startup if demo population fails
       }
     }
 
     // Register CORS
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    console.log('[SERVER] Registering CORS for:', frontendUrl);
+    const isProduction = process.env.NODE_ENV === 'production';
+    const corsOrigins = isProduction 
+      ? [frontendUrl, 'https://github-scraper-psi.vercel.app'] // Allow both direct and Vercel proxy
+      : frontendUrl;
+    logger.info('[SERVER] Registering CORS for:', corsOrigins);
     await app.register(require('@fastify/cors'), {
-      origin: frontendUrl,
+      origin: corsOrigins,
       credentials: true,
     });
-    console.log('[SERVER] CORS registered');
+    logger.info('[SERVER] CORS registered');
 
     // Register cookie plugin
-    console.log('[SERVER] Registering cookie plugin');
+    logger.info('[SERVER] Registering cookie plugin');
     await app.register(require('@fastify/cookie'));
-    console.log('[SERVER] Cookie plugin registered');
+    logger.info('[SERVER] Cookie plugin registered');
 
     // Register session plugin
-    console.log('[SERVER] Registering session plugin');
+    logger.info('[SERVER] Registering session plugin');
     await app.register(require('@fastify/session'), {
       cookieName: 'sessionId',
       secret: process.env.SESSION_SECRET || 'a-very-long-random-string-change-in-production',
       cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-        sameSite: 'lax',
+        path: '/', // Ensure cookie is available for all paths
+        // Use 'none' for OAuth redirects from GitHub (requires secure: true in production)
+        // Use 'lax' for local development (works with http://)
+        sameSite: isProduction ? 'none' : 'lax',
+        // Don't set domain explicitly - let browser handle it for cross-site cookies
       },
     });
-    console.log('[SERVER] Session plugin registered');
+    logger.info('[SERVER] Session plugin registered');
 
     // Register auth routes
-    console.log('[SERVER] Registering auth routes');
+    logger.info('[SERVER] Registering auth routes');
     await app.register(authRoutes);
-    console.log('[SERVER] Auth routes registered');
+    logger.info('[SERVER] Auth routes registered');
 
     // Register routes
     app.get('/health', async (request, reply) => {
@@ -191,7 +200,7 @@ const startServer = async () => {
               .send({ error: 'Repository processing status unknown.' });
         }
       } catch (error) {
-        console.error('Error in /leaderboard:', error);
+        logger.error('Error in /leaderboard:', error);
         return reply.status(500).send({ error: 'Failed to return leaderboard.' });
       }
     });
@@ -201,7 +210,7 @@ const startServer = async () => {
         const repositories = await prisma.repository.findMany();
         return reply.status(200).send(repositories);
       } catch (error) {
-        console.error('Failed to fetch repository jobs:', error);
+        logger.error('Failed to fetch repository jobs:', error);
         reply.status(500).send({ error: 'Failed to fetch repository jobs' });
       }
     });
@@ -270,7 +279,7 @@ const startServer = async () => {
           },
         });
       } catch (error) {
-        console.error('Error retrying repository:', error);
+        logger.error('Error retrying repository:', error);
         return reply
           .status(500)
           .send({ error: 'Failed to retry repository processing.' });
@@ -287,11 +296,11 @@ const startServer = async () => {
       port: Number(process.env.PORT) || 3000,
       host: '0.0.0.0',
     });
-    console.log(
+    logger.info(
       `Server is running on http://0.0.0.0:${process.env.PORT || 3000}`
     );
   } catch (err) {
-    console.error('Error starting server:', err);
+    logger.error('Error starting server:', err);
     app.log.error(err);
     process.exit(1);
   }

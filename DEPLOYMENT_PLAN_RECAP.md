@@ -125,24 +125,41 @@
 
 2. **Build & Push API Image**
 
+   **⚠️ CRITICAL: Build for AMD64 architecture (Cloud Run requirement)**
+
    ```bash
    cd backend
-   docker build -f Dockerfile.prod -t gcr.io/$PROJECT_ID/$SERVICE:latest .
+   # IMPORTANT: Use --platform linux/amd64 for Cloud Run compatibility
+   # If building on Apple Silicon (M1/M2/M3), this is REQUIRED
+   docker build --platform linux/amd64 -f Dockerfile.prod -t gcr.io/$PROJECT_ID/$SERVICE:latest .
    gcloud auth configure-docker
    docker push gcr.io/$PROJECT_ID/$SERVICE:latest
+   ```
+
+   **Note:** Tag images with version numbers for better tracking:
+
+   ```bash
+   docker tag gcr.io/$PROJECT_ID/$SERVICE:latest gcr.io/$PROJECT_ID/$SERVICE:$(date +%Y%m%d-%H%M%S)
+   docker push gcr.io/$PROJECT_ID/$SERVICE:$(date +%Y%m%d-%H%M%S)
    ```
 
 3. **Deploy Cloud Run Service**
 
    ```bash
-   # Update cloudrun.yaml with your PROJECT_ID
-   sed -i '' "s/YOUR_PROJECT_ID/${PROJECT_ID}/g" cloudrun.yaml
+   # Update cloudrun.yaml with your PROJECT_ID and correct image tag
+   # Make sure the image tag matches what you pushed (or use :latest)
 
-   # Deploy
+   # Deploy (note: --allow-unauthenticated flag doesn't work with replace)
    gcloud run services replace cloudrun.yaml \
      --project=$PROJECT_ID \
+     --region=$REGION
+
+   # Then allow unauthenticated access separately (if needed):
+   gcloud run services add-iam-policy-binding $SERVICE \
      --region=$REGION \
-     --allow-unauthenticated
+     --member="allUsers" \
+     --role="roles/run.invoker" \
+     --project=$PROJECT_ID
    ```
 
 4. **Get Service URL**
@@ -158,7 +175,8 @@
 
    ```bash
    cd backend
-   docker build -f Dockerfile.cloudrun-worker -t gcr.io/$PROJECT_ID/$JOB_NAME:latest .
+   # CRITICAL: Use --platform linux/amd64 for Cloud Run compatibility
+   docker build --platform linux/amd64 -f Dockerfile.cloudrun-worker -t gcr.io/$PROJECT_ID/$JOB_NAME:latest .
    docker push gcr.io/$PROJECT_ID/$JOB_NAME:latest
    ```
 
@@ -286,7 +304,8 @@
 
 ```bash
 cd backend
-docker build -f Dockerfile.prod -t gcr.io/$PROJECT_ID/$SERVICE:latest .
+# CRITICAL: Always use --platform linux/amd64 for Cloud Run
+docker build --platform linux/amd64 -f Dockerfile.prod -t gcr.io/$PROJECT_ID/$SERVICE:latest .
 docker push gcr.io/$PROJECT_ID/$SERVICE:latest
 gcloud run services replace cloudrun.yaml --region=$REGION
 ```
@@ -295,7 +314,8 @@ gcloud run services replace cloudrun.yaml --region=$REGION
 
 ```bash
 cd backend
-docker build -f Dockerfile.cloudrun-worker -t gcr.io/$PROJECT_ID/$JOB_NAME:latest .
+# CRITICAL: Always use --platform linux/amd64 for Cloud Run
+docker build --platform linux/amd64 -f Dockerfile.cloudrun-worker -t gcr.io/$PROJECT_ID/$JOB_NAME:latest .
 docker push gcr.io/$PROJECT_ID/$JOB_NAME:latest
 gcloud run jobs replace cloudrun-job.yaml --region=$REGION
 ```
@@ -368,6 +388,79 @@ Before going live, verify:
 - `backend/src/workers/cloudrunWorker.ts` - Cloud Run Jobs-compatible worker
 - `backend/Dockerfile.cloudrun-worker` - Worker Dockerfile
 - `backend/package.json` - Added cloudrun-worker scripts
+
+## 🐛 Troubleshooting & Lessons Learned
+
+### Critical Issue: Architecture Mismatch (ARM64 vs AMD64)
+
+**Problem:** Container works locally but fails silently on Cloud Run with "Application exec likely failed" and no logs.
+
+**Root Cause:** Building Docker images on Apple Silicon (M1/M2/M3) creates ARM64 images by default, but Cloud Run requires AMD64 (x86-64).
+
+**Solution:** Always build with `--platform linux/amd64`:
+
+```bash
+docker build --platform linux/amd64 -f Dockerfile.prod -t gcr.io/$PROJECT_ID/$SERVICE:latest .
+```
+
+**How to Verify:**
+
+```bash
+# Check image architecture
+docker inspect gcr.io/$PROJECT_ID/$SERVICE:latest | jq -r '.[0].Architecture'
+# Should show: amd64 (not arm64)
+```
+
+### Other Common Issues
+
+1. **Missing SESSION_SECRET**
+
+   - Error: OAuth/session features fail silently
+   - Fix: Create `session-secret` in GCP Secret Manager
+   - Use: `./create-secrets.sh` script (includes SESSION_SECRET)
+
+2. **Secret Manager Permissions**
+
+   - Error: "Permission denied on secret"
+   - Fix: Grant `roles/secretmanager.secretAccessor` to Cloud Run service account
+   - Command: `gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:PROJECT_NUMBER-compute@developer.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"`
+
+3. **TypeScript Build Output Location**
+
+   - Error: "Cannot find module '/app/dist/index.js'"
+   - Fix: Set `rootDir: "./src"` in `tsconfig.json` (not `"./"`)
+   - Ensures output is `dist/index.js` not `dist/src/index.js`
+
+4. **Cloud Run Deployment Flags**
+
+   - Error: `--allow-unauthenticated` flag not recognized with `gcloud run services replace`
+   - Fix: Deploy first, then set IAM policy separately:
+     ```bash
+     gcloud run services replace cloudrun.yaml --region=$REGION
+     gcloud run services add-iam-policy-binding $SERVICE --member="allUsers" --role="roles/run.invoker" --region=$REGION
+     ```
+
+5. **No Logs Appearing**
+   - If container fails before startup script runs, no logs appear
+   - Check: Image architecture, entrypoint/CMD configuration, secret permissions
+   - Debug: Test locally with same environment variables first
+
+### Testing Locally Before Deployment
+
+Always test the exact image you'll deploy:
+
+```bash
+# Use test-container-local.sh script (fetches all secrets automatically)
+./test-container-local.sh
+
+# Or manually with all env vars
+docker run --rm -it \
+  -e PORT=8080 \
+  -e NODE_ENV=production \
+  -e DATABASE_URL="$(gcloud secrets versions access latest --secret='db-url' --project=$PROJECT_ID)" \
+  # ... (all other secrets)
+  gcr.io/$PROJECT_ID/$SERVICE:latest
+```
 
 ## 🎯 Key Differences from Original Plan
 

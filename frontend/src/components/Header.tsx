@@ -5,7 +5,6 @@ import { AuthButton } from './AuthButton';
 import { Button } from '@/components/ui/button';
 import { GitBranch, Menu, X } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
   onBack?: () => void;
@@ -17,7 +16,6 @@ export const Header: React.FC<HeaderProps> = ({
   showBackButton = false,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);

@@ -15,6 +15,10 @@ echo "   - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD (from Upstash)"
 echo "   - R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY (from Cloudflare)"
 echo "   - SESSION_SECRET (generate with: openssl rand -base64 32)"
 echo "   - GITHUB_TOKEN (optional)"
+echo "   - GITHUB_CLIENT_ID (from Production GitHub OAuth App)"
+echo "   - GITHUB_CLIENT_SECRET (from Production GitHub OAuth App)"
+echo "   - FRONTEND_URL (your Vercel production URL, e.g., https://your-app.vercel.app)"
+echo "   - BACKEND_URL (your Cloud Run URL, e.g., https://api-xxx.run.app)"
 echo ""
 
 read -p "Press Enter when ready to continue..."
@@ -118,9 +122,76 @@ printf '%s' "${R2_BUCKET_NAME}" | gcloud secrets create r2-bucket \
   --data-file=- \
   --project=${PROJECT_ID}
 
+# GitHub OAuth Client ID (Production)
+echo ""
+echo "🔐 GitHub OAuth Credentials (Production)"
+echo "   Make sure you've created a Production OAuth App with callback URL:"
+echo "   https://api-sgmtwgzrlq-ue.a.run.app/auth/github/callback"
+read -p "Enter GITHUB_CLIENT_ID (Production): " GITHUB_CLIENT_ID
+if [ -n "${GITHUB_CLIENT_ID}" ]; then
+  printf '%s' "${GITHUB_CLIENT_ID}" | gcloud secrets create github-client-id \
+    --data-file=- \
+    --project=${PROJECT_ID} || \
+    printf '%s' "${GITHUB_CLIENT_ID}" | gcloud secrets versions add github-client-id \
+    --data-file=- \
+    --project=${PROJECT_ID}
+fi
+
+# GitHub OAuth Client Secret (Production)
+read -p "Enter GITHUB_CLIENT_SECRET (Production): " GITHUB_CLIENT_SECRET
+if [ -n "${GITHUB_CLIENT_SECRET}" ]; then
+  printf '%s' "${GITHUB_CLIENT_SECRET}" | gcloud secrets create github-client-secret \
+    --data-file=- \
+    --project=${PROJECT_ID} || \
+    printf '%s' "${GITHUB_CLIENT_SECRET}" | gcloud secrets versions add github-client-secret \
+    --data-file=- \
+    --project=${PROJECT_ID}
+fi
+
+# Frontend URL (Vercel)
+echo ""
+echo "🌐 Frontend URL (Vercel)"
+echo "   Your Vercel production URL (e.g., https://github-scraper-xxx.vercel.app)"
+read -p "Enter FRONTEND_URL: " FRONTEND_URL
+if [ -z "${FRONTEND_URL}" ]; then
+  echo "⚠️  FRONTEND_URL is empty. You'll need to set it manually in cloudrun.yaml"
+else
+  printf '%s' "${FRONTEND_URL}" | gcloud secrets create frontend-url \
+    --data-file=- \
+    --project=${PROJECT_ID} || \
+    printf '%s' "${FRONTEND_URL}" | gcloud secrets versions add frontend-url \
+    --data-file=- \
+    --project=${PROJECT_ID}
+fi
+
+# Backend URL (Cloud Run)
+echo ""
+echo "🌐 Backend URL (Cloud Run)"
+read -p "Enter BACKEND_URL (default: https://api-sgmtwgzrlq-ue.a.run.app): " BACKEND_URL
+BACKEND_URL=${BACKEND_URL:-https://api-sgmtwgzrlq-ue.a.run.app}
+printf '%s' "${BACKEND_URL}" | gcloud secrets create backend-url \
+  --data-file=- \
+  --project=${PROJECT_ID} || \
+  printf '%s' "${BACKEND_URL}" | gcloud secrets versions add backend-url \
+  --data-file=- \
+  --project=${PROJECT_ID}
+
 echo ""
 echo "✅ All secrets created!"
 echo ""
 echo "📋 Verify secrets:"
 echo "   gcloud secrets list --project=${PROJECT_ID}"
+echo ""
+echo "🔐 Verify Cloud Run service account has access to secrets:"
+echo "   gcloud projects get-iam-policy ${PROJECT_ID} --flatten='bindings[].members' --filter='bindings.role:roles/secretmanager.secretAccessor'"
+echo ""
+echo "   If not set, grant access:"
+echo "   PROJECT_NUMBER=\$(gcloud projects describe ${PROJECT_ID} --format='value(projectNumber)')"
+echo "   gcloud projects add-iam-policy-binding ${PROJECT_ID} \\"
+echo "     --member=\"serviceAccount:\${PROJECT_NUMBER}-compute@developer.gserviceaccount.com\" \\"
+echo "     --role=\"roles/secretmanager.secretAccessor\""
+echo ""
+echo "📝 Next steps:"
+echo "   1. cloudrun.yaml is already updated with the new secrets ✅"
+echo "   2. Redeploy: gcloud run services replace cloudrun.yaml --project=${PROJECT_ID} --region=${REGION}"
 
