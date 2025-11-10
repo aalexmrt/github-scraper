@@ -229,18 +229,25 @@ deploy_api() {
   docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${version}
   cd ..
 
-  # Cleanup old API images
-  cleanup_old_images "api" "${version}"
-
   # Generate cloudrun.yaml from template using envsubst
   echo "📝 Generating cloudrun.yaml from template..."
   export IMAGE_TAG=${version}
   envsubst < cloudrun.yaml.template > cloudrun.yaml
 
+  # Verify the generated file has the correct version
+  if ! grep -q "api:${version}" cloudrun.yaml; then
+    echo "❌ Error: Generated cloudrun.yaml does not contain the correct image version ${version}"
+    echo "   This may indicate an issue with envsubst or the template file."
+    exit 1
+  fi
+
   # Deploy to Cloud Run
   gcloud run services replace cloudrun.yaml \
     --project=${PROJECT_ID} \
     --region=${REGION}
+  
+  # Cleanup old API images (after deployment to avoid validation errors)
+  cleanup_old_images "api" "${version}"
   echo "✅ Backend API deployed (version ${version})"
 }
 

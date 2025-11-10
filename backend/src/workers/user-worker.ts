@@ -9,7 +9,9 @@ const version = getVersion();
 logger.info('[USER_WORKER] Starting user worker...');
 logger.info(`[USER_WORKER] Worker Version: ${version}`);
 
-userQueue.process('user_processing', async (job) => {
+// Process jobs with concurrency support (default: 10 concurrent jobs)
+const CONCURRENCY = parseInt(process.env.USER_WORKER_CONCURRENCY || '10', 10);
+userQueue.process('user_processing', CONCURRENCY, async (job) => {
   const { repositoryId, emails, token } = job.data;
 
   try {
