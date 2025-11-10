@@ -139,6 +139,16 @@ ensure_artifact_registry_repo() {
   fi
 }
 
+# Ensure variables are exported for envsubst
+export PROJECT_ID REGION REPOSITORY
+
+# Check if envsubst is available
+if ! command -v envsubst &> /dev/null; then
+  echo "❌ Error: envsubst is not installed"
+  echo "   Install it with: brew install gettext (macOS) or apt-get install gettext-base (Linux)"
+  exit 1
+fi
+
 # Get current versions from package.json
 CURRENT_BACKEND_VERSION=$(cd backend && node -p "require('./package.json').version")
 CURRENT_FRONTEND_VERSION=$(cd frontend && node -p "require('./package.json').version")
@@ -210,9 +220,10 @@ cd ..
 # Cleanup old API images
 cleanup_old_images "api" "${BACKEND_VERSION}"
 
-# Update cloudrun.yaml with version tag
-echo "📝 Updating cloudrun.yaml with version ${BACKEND_VERSION}..."
-sed -i '' "s|image: .*docker.pkg.dev/${PROJECT_ID}/.*/api:.*|image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${BACKEND_VERSION}|g" cloudrun.yaml
+# Generate cloudrun.yaml from template using envsubst
+echo "📝 Generating cloudrun.yaml from template..."
+export IMAGE_TAG=${BACKEND_VERSION}
+envsubst < cloudrun.yaml.template > cloudrun.yaml
 
 # Deploy to Cloud Run
 gcloud run services replace cloudrun.yaml \
@@ -234,9 +245,10 @@ cd ..
 # Cleanup old Worker images
 cleanup_old_images "worker" "${BACKEND_VERSION}"
 
-# Update cloudrun-job.yaml with version tag
-echo "📝 Updating cloudrun-job.yaml with version ${BACKEND_VERSION}..."
-sed -i '' "s|image: .*docker.pkg.dev/${PROJECT_ID}/.*/worker:.*|image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/worker:${BACKEND_VERSION}|g" cloudrun-job.yaml
+# Generate cloudrun-job.yaml from template using envsubst
+echo "📝 Generating cloudrun-job.yaml from template..."
+export IMAGE_TAG=${BACKEND_VERSION}
+envsubst < cloudrun-job.yaml.template > cloudrun-job.yaml
 
 # Deploy to Cloud Run Jobs (use update instead of replace to avoid version conflicts)
 gcloud run jobs update worker \

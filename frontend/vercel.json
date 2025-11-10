@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api-sgmtwgzrlq-ue.a.run.app/:path*"
+      "destination": "https://your-backend-url.run.app/:path*"
     }
   ]
 }

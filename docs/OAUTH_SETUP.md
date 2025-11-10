@@ -36,7 +36,7 @@ The application now supports GitHub OAuth authentication, allowing users to sign
 3. Fill in the application details:
    - **Application name**: `GitHub Scraper (Prod)` (or your preferred name)
    - **Homepage URL**: Your Vercel production URL (e.g., `https://github-scraper-xxx.vercel.app`)
-   - **Authorization callback URL**: `https://api-sgmtwgzrlq-ue.a.run.app/auth/github/callback` (your Cloud Run backend URL)
+   - **Authorization callback URL**: `https://your-backend-url.run.app/auth/github/callback` (your Cloud Run backend URL)
 4. Click **"Register application"**
 5. Copy the **Client ID** and generate a **Client Secret**
 6. Save these for GCP Secret Manager (use `create-secrets.sh` script)
@@ -88,11 +88,11 @@ The script will prompt you for:
 - `GITHUB_CLIENT_ID` (Production OAuth App)
 - `GITHUB_CLIENT_SECRET` (Production OAuth App)
 - `FRONTEND_URL` (Your Vercel production URL)
-- `BACKEND_URL` (Your Cloud Run URL, defaults to `https://api-sgmtwgzrlq-ue.a.run.app`)
+- `BACKEND_URL` (Your Cloud Run URL, e.g., `https://your-backend-url.run.app`)
 
 **Production URLs:**
 - `FRONTEND_URL`: Your Vercel production URL (e.g., `https://github-scraper-xxx.vercel.app`)
-- `BACKEND_URL`: Your Cloud Run URL (e.g., `https://api-sgmtwgzrlq-ue.a.run.app`)
+- `BACKEND_URL`: Your Cloud Run URL (e.g., `https://your-backend-url.run.app`)
 
 ## Step 3: Database Migration
 
@@ -255,7 +255,7 @@ The frontend will start on **http://localhost:3001**
 3. **Update Cloud Run service:**
    ```bash
    gcloud run services replace cloudrun.yaml \
-     --project=personal-gcp-477623 \
+     --project=YOUR_GCP_PROJECT_ID \
      --region=us-east1
    ```
 

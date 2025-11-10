@@ -53,3 +53,7 @@ coverage/
 *.tgz
 
 .vercel
+
+# Generated deployment configs (from templates)
+cloudrun.yaml
+cloudrun-job.yaml

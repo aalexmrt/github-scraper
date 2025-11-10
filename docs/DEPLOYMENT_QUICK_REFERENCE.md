@@ -7,17 +7,17 @@ Quick reference for deploying and verifying all services.
 ### 1. Verify GitHub OAuth App Settings
 - [ ] Go to https://github.com/settings/developers
 - [ ] Open "GitHub Scraper (Prod)" OAuth App
-- [ ] Homepage URL: `https://github-scraper-psi.vercel.app`
-- [ ] Callback URL: `https://api-sgmtwgzrlq-ue.a.run.app/auth/github/callback`
+- [ ] Homepage URL: `https://your-app.vercel.app` (replace with your Vercel URL)
+- [ ] Callback URL: `https://your-backend-url.run.app/auth/github/callback` (replace with your Cloud Run URL)
 
 ### 2. Verify GCP Secrets
 ```bash
 # Quick verification
-gcloud secrets versions access latest --secret=frontend-url --project=personal-gcp-477623
-# Should show: https://github-scraper-psi.vercel.app (no trailing slash)
+gcloud secrets versions access latest --secret=frontend-url --project=YOUR_GCP_PROJECT_ID
+# Should show: https://your-app.vercel.app (no trailing slash)
 
-gcloud secrets versions access latest --secret=backend-url --project=personal-gcp-477623
-# Should show: https://api-sgmtwgzrlq-ue.a.run.app (no trailing slash)
+gcloud secrets versions access latest --secret=backend-url --project=YOUR_GCP_PROJECT_ID
+# Should show: https://your-backend-url.run.app (no trailing slash)
 ```
 
 ### 3. Verify Cloud Run Deployment
@@ -26,19 +26,19 @@ gcloud secrets versions access latest --secret=backend-url --project=personal-gc
 gcloud logging read \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api AND textPayload=~"AUTH"' \
   --limit 5 \
-  --project=personal-gcp-477623 \
+  --project=YOUR_GCP_PROJECT_ID \
   --format="value(textPayload)"
 
 # Should show:
-# [AUTH] Frontend URL: https://github-scraper-psi.vercel.app
-# [AUTH] Backend URL: https://api-sgmtwgzrlq-ue.a.run.app
+# [AUTH] Frontend URL: https://your-app.vercel.app
+# [AUTH] Backend URL: https://your-backend-url.run.app
 # [AUTH] GitHub Client ID: Set
 ```
 
 ### 4. Test OAuth Flow
-- [ ] Open: https://github-scraper-psi.vercel.app
+- [ ] Open: https://your-app.vercel.app (replace with your Vercel URL)
 - [ ] Click "Sign in with GitHub"
-- [ ] After authorization, should redirect to: `https://github-scraper-psi.vercel.app/?auth=success`
+- [ ] After authorization, should redirect to: `https://your-app.vercel.app/?auth=success`
 - [ ] Verify your GitHub avatar appears in UI
 
 ---
@@ -51,25 +51,25 @@ gcloud logging read \
 # 1. Build Docker image (AMD64 for Cloud Run)
 cd backend
 docker build -f Dockerfile.prod \
-  -t gcr.io/personal-gcp-477623/api:$(date +%Y%m%d)-amd64 \
-  -t gcr.io/personal-gcp-477623/api:latest \
+  -t gcr.io/YOUR_GCP_PROJECT_ID/api:$(date +%Y%m%d)-amd64 \
+  -t gcr.io/YOUR_GCP_PROJECT_ID/api:latest \
   --platform linux/amd64 \
   .
 
 # 2. Push to GCR
-docker push gcr.io/personal-gcp-477623/api:$(date +%Y%m%d)-amd64
-docker push gcr.io/personal-gcp-477623/api:latest
+docker push gcr.io/YOUR_GCP_PROJECT_ID/api:$(date +%Y%m%d)-amd64
+docker push gcr.io/YOUR_GCP_PROJECT_ID/api:latest
 
 # 3. Deploy to Cloud Run
 cd ..
 gcloud run services replace cloudrun.yaml \
-  --project=personal-gcp-477623 \
-  --region=us-east1
+  --project=YOUR_GCP_PROJECT_ID \
+  --region=YOUR_REGION
 
 # 4. Verify deployment
 gcloud run services describe api \
-  --region=us-east1 \
-  --project=personal-gcp-477623 \
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID \
   --format="value(status.url,status.latestReadyRevisionName)"
 ```
 
@@ -79,25 +79,25 @@ gcloud run services describe api \
 # 1. Build Docker image
 cd backend
 docker build -f Dockerfile.cloudrun-worker \
-  -t gcr.io/personal-gcp-477623/worker:$(date +%Y%m%d)-amd64 \
-  -t gcr.io/personal-gcp-477623/worker:latest \
+  -t gcr.io/YOUR_GCP_PROJECT_ID/worker:$(date +%Y%m%d)-amd64 \
+  -t gcr.io/YOUR_GCP_PROJECT_ID/worker:latest \
   --platform linux/amd64 \
   .
 
 # 2. Push to GCR
-docker push gcr.io/personal-gcp-477623/worker:$(date +%Y%m%d)-amd64
-docker push gcr.io/personal-gcp-477623/worker:latest
+docker push gcr.io/YOUR_GCP_PROJECT_ID/worker:$(date +%Y%m%d)-amd64
+docker push gcr.io/YOUR_GCP_PROJECT_ID/worker:latest
 
 # 3. Deploy to Cloud Run Jobs
 cd ..
 gcloud run jobs replace cloudrun-job.yaml \
-  --project=personal-gcp-477623 \
-  --region=us-east1
+  --project=YOUR_GCP_PROJECT_ID \
+  --region=YOUR_REGION
 
 # 4. Test the job manually
 gcloud run jobs execute worker \
-  --region=us-east1 \
-  --project=personal-gcp-477623 \
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID \
   --wait
 ```
 
@@ -120,10 +120,10 @@ git push origin main  # Automatically deploys
 
 ```bash
 # List all secrets
-gcloud secrets list --project=personal-gcp-477623
+gcloud secrets list --project=YOUR_GCP_PROJECT_ID
 
 # View specific secret
-gcloud secrets versions access latest --secret=SECRET_NAME --project=personal-gcp-477623
+gcloud secrets versions access latest --secret=SECRET_NAME --project=YOUR_GCP_PROJECT_ID
 ```
 
 ### Update Secrets
@@ -132,7 +132,7 @@ gcloud secrets versions access latest --secret=SECRET_NAME --project=personal-gc
 # Update a single secret
 echo -n "new-value" | gcloud secrets versions add SECRET_NAME \
   --data-file=- \
-  --project=personal-gcp-477623
+  --project=YOUR_GCP_PROJECT_ID
 
 # Update OAuth and URL secrets
 ./set-oauth-secrets.sh
@@ -146,14 +146,14 @@ echo -n "new-value" | gcloud secrets versions add SECRET_NAME \
 ```bash
 # Redeploy to pick up new secrets
 gcloud run services replace cloudrun.yaml \
-  --project=personal-gcp-477623 \
-  --region=us-east1
+  --project=YOUR_GCP_PROJECT_ID \
+  --region=YOUR_REGION
 
 # Verify new secrets are loaded (wait 30 seconds after deploy)
 gcloud logging read \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api AND textPayload=~"AUTH"' \
   --limit 3 \
-  --project=personal-gcp-477623
+  --project=YOUR_GCP_PROJECT_ID
 ```
 
 ---
@@ -166,15 +166,15 @@ gcloud logging read \
 # List recent revisions
 gcloud run revisions list \
   --service=api \
-  --region=us-east1 \
-  --project=personal-gcp-477623 \
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID \
   --format="table(name,status.conditions.status,metadata.creationTimestamp)"
 
 # Rollback to specific revision
 gcloud run services update-traffic api \
   --to-revisions=REVISION_NAME=100 \
-  --region=us-east1 \
-  --project=personal-gcp-477623
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID
 ```
 
 ### Worker
@@ -182,16 +182,16 @@ gcloud run services update-traffic api \
 ```bash
 # Update to previous image
 gcloud run jobs update worker \
-  --image=gcr.io/personal-gcp-477623/worker:PREVIOUS_TAG \
-  --region=us-east1 \
-  --project=personal-gcp-477623
+  --image=gcr.io/YOUR_GCP_PROJECT_ID/worker:PREVIOUS_TAG \
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID
 ```
 
 ### Frontend
 
 ```bash
 # Via Vercel dashboard
-# Go to: https://vercel.com/aalexmrts-projects/github-scraper/deployments
+# Go to: https://vercel.com/your-username/your-project/deployments
 # Select deployment → "Promote to Production"
 
 # Or via CLI
@@ -210,21 +210,21 @@ vercel rollback
 **Fix:**
 ```bash
 # 1. Verify secret is correct
-gcloud secrets versions access latest --secret=frontend-url --project=personal-gcp-477623
+gcloud secrets versions access latest --secret=frontend-url --project=YOUR_GCP_PROJECT_ID
 
 # 2. If incorrect, update it
-echo -n "https://github-scraper-psi.vercel.app" | \
-  gcloud secrets versions add frontend-url --data-file=- --project=personal-gcp-477623
+echo -n "https://your-app.vercel.app" | \
+  gcloud secrets versions add frontend-url --data-file=- --project=YOUR_GCP_PROJECT_ID
 
 # 3. Force new deployment (sometimes needed to bust cache)
 # Update cloudrun.yaml to use specific version temporarily
 sed -i '' 's/key: latest/key: "5"/g' cloudrun.yaml
-gcloud run services replace cloudrun.yaml --project=personal-gcp-477623 --region=us-east1
+gcloud run services replace cloudrun.yaml --project=YOUR_GCP_PROJECT_ID --region=YOUR_REGION
 
 # 4. Verify in logs (wait 30 seconds)
 gcloud logging read \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api AND textPayload=~"Frontend URL"' \
-  --limit 1 --project=personal-gcp-477623
+  --limit 1 --project=YOUR_GCP_PROJECT_ID
 
 # 5. Restore to 'latest' in cloudrun.yaml
 sed -i '' 's/key: "5"/key: latest/g' cloudrun.yaml
@@ -237,7 +237,7 @@ sed -i '' 's/key: "5"/key: latest/g' cloudrun.yaml
 gcloud logging read \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api' \
   --limit 50 \
-  --project=personal-gcp-477623
+  --project=YOUR_GCP_PROJECT_ID
 
 # Common issues:
 # - Missing secrets: Check all secrets are set
@@ -251,26 +251,26 @@ gcloud logging read \
 ```bash
 # Check job status
 gcloud run jobs describe worker \
-  --region=us-east1 \
-  --project=personal-gcp-477623
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID
 
 # Check recent executions
 gcloud run jobs executions list \
   --job=worker \
-  --region=us-east1 \
-  --project=personal-gcp-477623 \
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID \
   --limit=5
 
 # View logs from recent execution
 gcloud logging read \
   'resource.type=cloud_run_job AND resource.labels.job_name=worker' \
   --limit=100 \
-  --project=personal-gcp-477623
+  --project=YOUR_GCP_PROJECT_ID
 
 # Manually trigger to test
 gcloud run jobs execute worker \
-  --region=us-east1 \
-  --project=personal-gcp-477623 \
+  --region=YOUR_REGION \
+  --project=YOUR_GCP_PROJECT_ID \
   --wait
 ```
 
@@ -294,10 +294,10 @@ vercel logs
 
 ```bash
 # Backend API
-curl https://api-sgmtwgzrlq-ue.a.run.app/health
+curl https://your-backend-url.run.app/health
 
 # Frontend
-curl https://github-scraper-psi.vercel.app
+curl https://your-app.vercel.app
 ```
 
 ### View Logs
@@ -307,19 +307,19 @@ curl https://github-scraper-psi.vercel.app
 gcloud logging read \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api' \
   --limit=50 \
-  --project=personal-gcp-477623
+  --project=YOUR_GCP_PROJECT_ID
 
 # Worker (last execution)
 gcloud logging read \
   'resource.type=cloud_run_job AND resource.labels.job_name=worker' \
   --limit=50 \
-  --project=personal-gcp-477623 \
+  --project=YOUR_GCP_PROJECT_ID \
   --freshness=1h
 
 # Follow logs in real-time
 gcloud logging tail \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api' \
-  --project=personal-gcp-477623
+  --project=YOUR_GCP_PROJECT_ID
 ```
 
 ### Check Costs
@@ -327,7 +327,7 @@ gcloud logging tail \
 ```bash
 # Cloud Run costs
 gcloud billing accounts list
-gcloud billing projects describe personal-gcp-477623
+gcloud billing projects describe YOUR_GCP_PROJECT_ID
 
 # View in Cloud Console
 # https://console.cloud.google.com/billing
@@ -338,13 +338,13 @@ gcloud billing projects describe personal-gcp-477623
 ## 🔗 Important URLs
 
 ### Production
-- **Frontend**: https://github-scraper-psi.vercel.app
-- **Backend API**: https://api-sgmtwgzrlq-ue.a.run.app
-- **GitHub OAuth Callback**: https://api-sgmtwgzrlq-ue.a.run.app/auth/github/callback
+- **Frontend**: https://your-app.vercel.app (replace with your Vercel URL)
+- **Backend API**: https://your-backend-url.run.app (replace with your Cloud Run URL)
+- **GitHub OAuth Callback**: https://your-backend-url.run.app/auth/github/callback
 
 ### Dashboards
-- **GCP Console**: https://console.cloud.google.com/run?project=personal-gcp-477623
-- **Vercel Dashboard**: https://vercel.com/aalexmrts-projects/github-scraper
+- **GCP Console**: https://console.cloud.google.com/run?project=YOUR_GCP_PROJECT_ID
+- **Vercel Dashboard**: https://vercel.com/your-username/your-project
 - **GitHub OAuth Apps**: https://github.com/settings/developers
 
 ### Documentation
