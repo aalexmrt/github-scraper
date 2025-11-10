@@ -2,6 +2,7 @@ import { repoQueue } from '../services/queueService';
 import { syncRepository, generateLeaderboard } from '../services/repoService';
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { getVersion } from '../utils/version';
 
 /**
  * Cloud Run Jobs-compatible worker
@@ -75,22 +76,20 @@ async function processOneJob() {
       });
 
       await syncRepository(dbRepository, token);
-      const { rateLimitHit } = await generateLeaderboard(dbRepository, token);
+      await generateLeaderboard(dbRepository);
 
-      // Update repository state based on whether rate limit was hit
+      // Update repository state - always completed since we don't make API calls
       await prisma.repository.update({
         where: { id: dbRepository.id },
         data: {
-          state: rateLimitHit ? 'completed_partial' : 'completed',
+          state: 'completed',
           lastProcessedAt: new Date(),
         },
       });
 
-      if (rateLimitHit) {
-        logger.warn(
-          `[WORKER] Repository ${dbRepository.url} completed partially due to rate limit. Some contributors may have email-only data.`
-        );
-      }
+      logger.info(
+        `[WORKER] Repository ${dbRepository.url} processed successfully. Contributors created with email-only data (no API calls made).`
+      );
 
       await job.remove(); // Remove completed job from queue
       logger.info(
@@ -128,6 +127,10 @@ async function processOneJob() {
 // Run migrations first, then process one job
 async function main() {
   try {
+    const version = getVersion();
+    console.log('[WORKER] Starting Cloud Run worker...');
+    console.log(`[WORKER] Worker Version: ${version}`);
+
     logger.info('[WORKER] Running database migrations...');
     const { execSync } = require('child_process');
     execSync('npx prisma migrate deploy', { stdio: 'inherit' });

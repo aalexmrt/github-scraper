@@ -3,12 +3,7 @@ import path from 'path';
 import simpleGit from 'simple-git';
 import { StorageAdapter } from './StorageAdapter';
 
-const REPO_BASE_PATH = '/data/repos';
-
-// Ensure the base directory exists
-if (!fs.existsSync(REPO_BASE_PATH)) {
-  fs.mkdirSync(REPO_BASE_PATH, { recursive: true });
-}
+const DEFAULT_REPO_BASE_PATH = '/data/repos';
 
 /**
  * Filesystem storage adapter for local development
@@ -17,7 +12,7 @@ if (!fs.existsSync(REPO_BASE_PATH)) {
 export class FilesystemStorageAdapter implements StorageAdapter {
   private basePath: string;
 
-  constructor(basePath: string = REPO_BASE_PATH) {
+  constructor(basePath: string = DEFAULT_REPO_BASE_PATH) {
     this.basePath = basePath;
     this.ensureDirectory();
   }
@@ -56,5 +51,3 @@ export class FilesystemStorageAdapter implements StorageAdapter {
     }
   }
 }
-
-

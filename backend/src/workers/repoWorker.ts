@@ -2,6 +2,12 @@ import { repoQueue } from '../services/queueService';
 import { syncRepository, generateLeaderboard } from '../services/repoService';
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { getVersion } from '../utils/version';
+
+// Log version on worker startup
+const version = getVersion();
+logger.info('[WORKER] Starting continuous worker...');
+logger.info(`[WORKER] Worker Version: ${version}`);
 
 repoQueue.process(async (job) => {
   const { dbRepository, token = null } = job.data;
@@ -13,22 +19,20 @@ repoQueue.process(async (job) => {
     });
 
     await syncRepository(dbRepository, token);
-    const { rateLimitHit } = await generateLeaderboard(dbRepository, token);
+    await generateLeaderboard(dbRepository);
 
-    // Update repository state based on whether rate limit was hit
+    // Update repository state - always completed since we don't make API calls
     await prisma.repository.update({
       where: { id: dbRepository.id },
       data: {
-        state: rateLimitHit ? 'completed_partial' : 'completed',
+        state: 'completed',
         lastProcessedAt: new Date(),
       },
     });
 
-    if (rateLimitHit) {
-      logger.warn(
-        `Repository ${dbRepository.url} completed partially due to rate limit. Some contributors may have email-only data.`
-      );
-    }
+    logger.info(
+      `Repository ${dbRepository.url} processed successfully. Contributors created with email-only data (no API calls made).`
+    );
 
     return `Repository ${dbRepository.url} processed successfully at ${dbRepository.lastProcessedAt}`;
   } catch (error: any) {

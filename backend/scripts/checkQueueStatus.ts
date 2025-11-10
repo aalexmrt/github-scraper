@@ -4,6 +4,11 @@
  * Checks the state of jobs in the Bull queue
  */
 
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
 import { repoQueue } from '../src/services/queueService';
 import prisma from '../src/utils/prisma';
 import { logger } from '../src/utils/logger';

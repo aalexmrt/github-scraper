@@ -14,6 +14,7 @@ import { authRoutes } from './routes/auth';
 import { getUserToken } from './utils/getUserToken';
 import { populateDemoRepos } from './utils/populateDemoRepos';
 import { logger } from './utils/logger';
+import { getVersion } from './utils/version';
 
 dotenv.config();
 
@@ -22,7 +23,9 @@ const app = fastify({ logger: true });
 // Start the server
 const startServer = async () => {
   try {
-    logger.info('[SERVER] Starting server...');
+    const version = getVersion();
+    console.log('[SERVER] Starting server...');
+    console.log(`[SERVER] API Version: ${version}`);
     logger.info('[SERVER] Environment:', {
       NODE_ENV: process.env.NODE_ENV,
       FRONTEND_URL: process.env.FRONTEND_URL,
@@ -94,14 +97,10 @@ const startServer = async () => {
     });
 
     app.get('/version', async (request, reply) => {
-      // Use path resolution to find package.json relative to the compiled file location
-      const path = require('path');
-      const fs = require('fs');
-      const packageJsonPath = path.join(__dirname, '../../package.json');
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      const version = getVersion();
       return reply.status(200).send({
-        api: packageJson.version,
-        worker: packageJson.version, // Worker uses same codebase
+        api: version,
+        worker: version, // Worker uses same codebase
       });
     });
 
