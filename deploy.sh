@@ -92,14 +92,14 @@ cleanup_old_images() {
   
   echo "🧹 Cleaning up old versions of ${image_name}..."
   
-  # Get all tags for this image
+  # Get all tags for this image (use tags list, not images list, to get version tags)
   local image_path="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${image_name}"
-  local all_tags=$(gcloud artifacts docker images list ${image_path} \
-    --format="value(version)" \
+  local all_tags=$(gcloud artifacts docker tags list ${image_path} \
+    --format="value(tag)" \
     --project=${PROJECT_ID} 2>/dev/null | grep -v "^$" || echo "")
   
   if [ -z "$all_tags" ]; then
-    echo "  No existing images found, skipping cleanup"
+    echo "  No existing tags found, skipping cleanup"
     return
   fi
   
@@ -114,9 +114,9 @@ cleanup_old_images() {
       continue
     fi
     
-    # Delete old version
+    # Delete old version by tag
     echo "  Deleting old version: ${version}"
-    gcloud artifacts docker images delete ${image_path}:${version} \
+    gcloud artifacts docker tags delete ${image_path}:${version} \
       --project=${PROJECT_ID} \
       --quiet 2>/dev/null || true
     
