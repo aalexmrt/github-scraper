@@ -29,14 +29,22 @@ const statusConfig: Record<
 > = {
   failed: { label: 'Failed', color: 'bg-red-500 text-red-100' },
   in_progress: { label: 'Processing', color: 'bg-yellow-500 text-yellow-100' },
-  commits_processing: { label: 'Processing Commits', color: 'bg-yellow-500 text-yellow-100' },
-  users_processing: { label: 'Processing Users', color: 'bg-yellow-500 text-yellow-100' },
+  commits_processing: {
+    label: 'Processing Commits',
+    color: 'bg-yellow-500 text-yellow-100',
+  },
+  users_processing: {
+    label: 'Processing Users',
+    color: 'bg-yellow-500 text-yellow-100',
+  },
   pending: { label: 'On Queue', color: 'bg-blue-500 text-blue-100' },
   completed: { label: 'Completed', color: 'bg-green-500 text-green-100' },
 };
 
 const getStatusConfig = (state: Repository['state']) => {
-  return statusConfig[state] || { label: state, color: 'bg-gray-500 text-gray-100' };
+  return (
+    statusConfig[state] || { label: state, color: 'bg-gray-500 text-gray-100' }
+  );
 };
 
 export function RepositoriesTable() {
@@ -218,10 +226,14 @@ export function RepositoriesTable() {
                         )}
                         <Button
                           onClick={() => handleRepoClick(repo.url)}
-                          disabled={repo.state !== 'completed' && repo.state !== 'users_processing'}
+                          disabled={
+                            repo.state !== 'completed' &&
+                            repo.state !== 'users_processing'
+                          }
                           className={`${
-                            repo.state === 'completed' || repo.state === 'users_processing'
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                            repo.state === 'completed' ||
+                            repo.state === 'users_processing'
+                              ? 'bg-black hover:bg-gray-900 text-white dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-white'
                               : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                           } transition-colors`}
                           size="sm"

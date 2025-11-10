@@ -23,6 +23,7 @@
     "test-worker": "ts-node scripts/testWorker.ts",
     "check-queue": "ts-node scripts/checkQueueStatus.ts",
     "check-commit-queue": "ts-node scripts/checkCommitQueueStatus.ts",
+    "check-user-queue": "ts-node scripts/checkUserQueueStatus.ts",
     "reenqueue-pending": "ts-node scripts/reenqueuePendingRepos.ts",
     "cleanup-duplicates": "ts-node scripts/cleanupDuplicateJobs.ts"
   },
