@@ -8,7 +8,13 @@ axios.defaults.withCredentials = true;
 export interface Repository {
   id: string;
   url: string;
-  state: 'pending' | 'in_progress' | 'commits_processing' | 'users_processing' | 'completed' | 'failed';
+  state:
+    | 'pending'
+    | 'in_progress'
+    | 'commits_processing'
+    | 'users_processing'
+    | 'completed'
+    | 'failed';
 }
 // Fetch repository jobs from the API
 export const fetchRepositories = async (): Promise<Repository[]> => {
@@ -46,8 +52,12 @@ export const getRepositoryLeaderboard = async (
 export const retryRepository = async (
   repoUrl: string
 ): Promise<{ message: string; repository: Repository }> => {
-  const response = await axios.post(`/api/repositories/retry?repoUrl=${repoUrl}`, {}, {
-    withCredentials: true,
-  });
+  const response = await axios.post(
+    `/api/repositories/retry?repoUrl=${repoUrl}`,
+    {},
+    {
+      withCredentials: true,
+    }
+  );
   return response.data;
 };

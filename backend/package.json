@@ -1,6 +1,6 @@
 {
   "name": "github-scraper",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "description": "",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",

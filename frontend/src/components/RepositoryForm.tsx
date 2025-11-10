@@ -28,6 +28,12 @@ export const RepositoryForm: React.FC = () => {
   const { refreshJobs } = useRepositoryContext();
   const { isAuthenticated } = useAuth();
 
+  // Processing intervals from environment variables with fallbacks
+  const repoProcessingInterval =
+    process.env.NEXT_PUBLIC_REPO_PROCESSING_INTERVAL || '5 minutes';
+  const userProcessingInterval =
+    process.env.NEXT_PUBLIC_USER_PROCESSING_INTERVAL || '4 hours';
+
   const submitRepository = useMutation({
     mutationFn: async () => {
       // If user is authenticated, backend will use their token automatically
@@ -99,7 +105,8 @@ export const RepositoryForm: React.FC = () => {
             <AlertDescription className="text-sm">
               <span className="font-semibold">Note:</span> This is an open source
               project with limited budget. Repositories are processed via a
-              scheduled queue that runs every 5 minutes. Your repository will be
+              scheduled queue that runs every {repoProcessingInterval}. Users are
+              processed every {userProcessingInterval}. Your repository will be
               added to the queue and processed during the next scheduled run.
             </AlertDescription>
           </Alert>
