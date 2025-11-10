@@ -4,9 +4,9 @@
  * Checks the state of jobs in the Bull queue
  */
 
-import { repoQueue } from '../services/queueService';
-import prisma from '../utils/prisma';
-import { logger } from '../utils/logger';
+import { repoQueue } from '../src/services/queueService';
+import prisma from '../src/utils/prisma';
+import { logger } from '../src/utils/logger';
 
 async function checkQueueStatus() {
   try {

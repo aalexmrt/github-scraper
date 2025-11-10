@@ -106,8 +106,6 @@ This document outlines the deployment strategy for the GitHub Repository Scraper
      - **Secret Access Key**
 7. Save credentials for Step 4 (Kubernetes Secrets)
 
-**For detailed R2 setup, see `R2_SETUP.md`**
-
 ---
 
 ## Step 2: Set Up OCI Kubernetes Cluster
@@ -846,9 +844,3 @@ kubectl rollout restart deployment/worker -n github-scraper
 - [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
 - [Kubernetes Official Documentation](https://kubernetes.io/docs/)
 - [Helm Documentation](https://helm.sh/docs/)
-
-For detailed analysis, see:
-
-- `OCI_K8S_ANALYSIS.md` - Detailed OCI Kubernetes analysis
-- `DEPLOYMENT_DECISIONS.md` - Decision summary
-- `R2_SETUP.md` - Cloudflare R2 setup guide

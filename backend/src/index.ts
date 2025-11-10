@@ -4,6 +4,10 @@ import dotenv from 'dotenv';
 import prisma from './utils/prisma';
 import { repoQueue } from './services/queueService';
 import { getLeaderboardForRepository } from './services/repoService';
+import {
+  refreshContributorData,
+  refreshPartialRepositories,
+} from './services/refreshService';
 import { isValidGitHubUrl } from './utils/isValidGitHubUrl';
 import { normalizeRepoUrl } from './utils/normalizeUrl';
 import { authRoutes } from './routes/auth';
@@ -164,6 +168,13 @@ const startServer = async () => {
               message: 'Repository processed successfully.',
               lastProcessedAt: dbRepository.lastProcessedAt,
             });
+          case 'completed_partial':
+            return reply.status(200).send({
+              message:
+                'Repository processed partially. Some contributor data may be incomplete due to rate limits.',
+              lastProcessedAt: dbRepository.lastProcessedAt,
+              partial: true,
+            });
           default:
             return reply
               .status(202)
@@ -214,8 +225,12 @@ const startServer = async () => {
               .status(202)
               .send({ message: 'Repository still processing.' });
           case 'completed':
+          case 'completed_partial':
             const leaderboard = await getLeaderboardForRepository(dbRepository);
-            return reply.status(200).send(leaderboard);
+            return reply.status(200).send({
+              ...leaderboard,
+              partial: dbRepository.state === 'completed_partial',
+            });
           default:
             return reply
               .status(404)
@@ -236,6 +251,43 @@ const startServer = async () => {
       } catch (error) {
         logger.error('Failed to fetch repository jobs:', error);
         reply.status(500).send({ error: 'Failed to fetch repository jobs' });
+      }
+    });
+
+    app.post('/refresh', async (request, reply) => {
+      const { authorization } = request.headers;
+
+      try {
+        // Get token from authenticated user session, or fall back to Authorization header, or use env token
+        let token: string | null = null;
+        const userToken = await getUserToken(request);
+        if (userToken) {
+          token = userToken;
+        } else if (authorization) {
+          token = authorization.replace('Bearer ', '');
+        }
+
+        logger.info('[REFRESH] Refresh endpoint called');
+        const result = await refreshPartialRepositories(token);
+
+        if (result.rateLimitHit) {
+          return reply.status(429).send({
+            message:
+              'Refresh partially completed but hit rate limit. Some data may still be incomplete.',
+            ...result,
+          });
+        }
+
+        return reply.status(200).send({
+          message: 'Refresh completed successfully.',
+          ...result,
+        });
+      } catch (error: any) {
+        logger.error('Error refreshing contributors:', error);
+        return reply.status(500).send({
+          error: 'Failed to refresh contributor data.',
+          message: error.message,
+        });
       }
     });
 
@@ -268,10 +320,13 @@ const startServer = async () => {
           });
         }
 
-        // Only allow retry for failed repositories
-        if (dbRepository.state !== 'failed') {
+        // Allow retry for failed repositories and partial repositories
+        if (
+          dbRepository.state !== 'failed' &&
+          dbRepository.state !== 'completed_partial'
+        ) {
           return reply.status(400).send({
-            error: `Repository is not in failed state. Current state: ${dbRepository.state}`,
+            error: `Repository cannot be retried. Current state: ${dbRepository.state}`,
           });
         }
 

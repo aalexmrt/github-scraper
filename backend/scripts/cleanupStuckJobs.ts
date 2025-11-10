@@ -4,8 +4,8 @@
  * Moves active jobs back to waiting or removes them if they're too old
  */
 
-import { repoQueue } from '../services/queueService';
-import { logger } from '../utils/logger';
+import { repoQueue } from '../src/services/queueService';
+import { logger } from '../src/utils/logger';
 
 async function cleanupStuckJobs() {
   try {

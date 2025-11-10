@@ -13,16 +13,22 @@ repoQueue.process(async (job) => {
     });
 
     await syncRepository(dbRepository, token);
-    await generateLeaderboard(dbRepository, token);
+    const { rateLimitHit } = await generateLeaderboard(dbRepository, token);
 
-    // Update repository state to completed
+    // Update repository state based on whether rate limit was hit
     await prisma.repository.update({
       where: { id: dbRepository.id },
       data: {
-        state: 'completed',
+        state: rateLimitHit ? 'completed_partial' : 'completed',
         lastProcessedAt: new Date(),
       },
     });
+
+    if (rateLimitHit) {
+      logger.warn(
+        `Repository ${dbRepository.url} completed partially due to rate limit. Some contributors may have email-only data.`
+      );
+    }
 
     return `Repository ${dbRepository.url} processed successfully at ${dbRepository.lastProcessedAt}`;
   } catch (error: any) {

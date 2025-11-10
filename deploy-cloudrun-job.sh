@@ -5,7 +5,7 @@
 set -e
 
 # Configuration (set these environment variables)
-PROJECT_ID=${PROJECT_ID:-"your-gcp-project"}
+PROJECT_ID=${PROJECT_ID:-"personal-gcp-477623"}
 REGION=${REGION:-"us-east1"}
 JOB_NAME=${JOB_NAME:-"github-scraper-worker"}
 IMAGE_NAME="gcr.io/${PROJECT_ID}/github-scraper-worker:latest"
@@ -49,6 +49,10 @@ gcloud run jobs replace cloudrun-job.yaml \
   --region=${REGION}
 
 echo "✅ Cloud Run Job deployed successfully!"
+echo ""
+echo "⚠️  NOTE: Google Container Registry (GCR) is being deprecated."
+echo "   If you see errors pushing to GCR, you'll need to migrate to Artifact Registry."
+echo "   Run: gcloud artifacts docker upgrade migrate --projects=${PROJECT_ID}"
 echo ""
 echo "📋 Next steps:"
 echo "1. Set up Cloud Scheduler to trigger the job:"

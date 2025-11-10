@@ -349,15 +349,14 @@ gcloud billing projects describe personal-gcp-477623
 
 ### Documentation
 - Full OAuth Setup: `OAUTH_SETUP.md`
-- OAuth Verification: `OAUTH_VERIFICATION_CHECKLIST.md`
-- CI/CD Strategy: `CICD_DEPLOYMENT_STRATEGY.md`
 - Architecture: `ARCHITECTURE.md`
+- Deployment Guide: `DEPLOYMENT.md`
 
 ---
 
 ## 🚀 Next Steps: CI/CD Setup
 
-See `CICD_DEPLOYMENT_STRATEGY.md` for full details. Quick start:
+For CI/CD automation, you can set up GitHub Actions or Cloud Build triggers. Quick start:
 
 ```bash
 # 1. Setup CI/CD service account
