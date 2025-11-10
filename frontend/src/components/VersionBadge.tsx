@@ -4,8 +4,9 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchVersions } from '@/services/versionService';
 import { Package } from 'lucide-react';
+import packageJson from '../../package.json';
 
-const FRONTEND_VERSION = '0.1.0';
+const FRONTEND_VERSION = packageJson.version;
 
 export const VersionBadge: React.FC = () => {
   const { data: versions, isLoading } = useQuery({

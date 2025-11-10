@@ -121,4 +121,3 @@ commitQueue.process('commit_processing', CONCURRENCY, async (job) => {
     throw error; // Ensures the job is marked as failed
   }
 });
-

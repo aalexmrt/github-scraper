@@ -218,9 +218,9 @@ export function RepositoriesTable() {
                         )}
                         <Button
                           onClick={() => handleRepoClick(repo.url)}
-                          disabled={repo.state !== 'completed'}
+                          disabled={repo.state !== 'completed' && repo.state !== 'users_processing'}
                           className={`${
-                            repo.state === 'completed'
+                            repo.state === 'completed' || repo.state === 'users_processing'
                               ? 'bg-green-600 hover:bg-green-700 text-white'
                               : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                           } transition-colors`}
