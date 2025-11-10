@@ -1,0 +1,7 @@
+# Ignore sensitive files from Vercel deployment
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+

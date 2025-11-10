@@ -15,6 +15,7 @@ import { getUserToken } from './utils/getUserToken';
 import { populateDemoRepos } from './utils/populateDemoRepos';
 import { logger } from './utils/logger';
 import { getVersion } from './utils/version';
+import { redisSessionStore } from './utils/redisSessionStore';
 
 dotenv.config();
 
@@ -68,7 +69,7 @@ const startServer = async () => {
 
     // Register session plugin
     logger.info('[SERVER] Registering session plugin');
-    await app.register(require('@fastify/session'), {
+    const sessionConfig: any = {
       cookieName: 'sessionId',
       secret:
         process.env.SESSION_SECRET ||
@@ -83,7 +84,18 @@ const startServer = async () => {
         sameSite: isProduction ? 'none' : 'lax',
         // Don't set domain explicitly - let browser handle it for cross-site cookies
       },
-    });
+    };
+
+    // Use Redis store in production (required for multi-instance Cloud Run)
+    // Use in-memory store in development (simpler, no Redis required)
+    if (isProduction) {
+      sessionConfig.store = redisSessionStore;
+      logger.info('[SERVER] Using Redis session store (production)');
+    } else {
+      logger.info('[SERVER] Using in-memory session store (development)');
+    }
+
+    await app.register(require('@fastify/session'), sessionConfig);
     logger.info('[SERVER] Session plugin registered');
 
     // Register auth routes

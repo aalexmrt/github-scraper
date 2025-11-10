@@ -2,11 +2,21 @@
 # Deployment script for GitHub Scraper
 # 
 # Usage:
-#   ./deploy.sh           # Deploy with patch version bump (default: 1.2.0 -> 1.2.1)
-#   ./deploy.sh --patch   # Same as above (explicit patch bump)
-#   ./deploy.sh --minor   # Deploy with minor version bump (1.2.0 -> 1.3.0)
-#   ./deploy.sh --major   # Deploy with major version bump (1.2.0 -> 2.0.0)
-#   ./deploy.sh --no-bump # Deploy without version bump (use current versions)
+#   ./deploy.sh                           # Deploy all services with patch version bump (default)
+#   ./deploy.sh --patch                   # Deploy all services with patch version bump
+#   ./deploy.sh --minor                   # Deploy all services with minor version bump
+#   ./deploy.sh --major                   # Deploy all services with major version bump
+#   ./deploy.sh --no-bump                 # Deploy all services without version bump
+#   ./deploy.sh api                       # Deploy only API service (with patch bump)
+#   ./deploy.sh api frontend              # Deploy API and Frontend services
+#   ./deploy.sh --no-bump commit-worker   # Deploy commit-worker without version bump
+#   ./deploy.sh --minor api user-worker   # Deploy API and user-worker with minor bump
+#
+# Available services:
+#   - api              Backend API (Cloud Run service)
+#   - commit-worker    Commit Worker (Cloud Run Job)
+#   - user-worker      User Worker (Cloud Run Job)
+#   - frontend         Frontend (Vercel)
 #
 # Version bumping follows semantic versioning:
 #   - Patch: bug fixes and regular deployments (default)
@@ -28,29 +38,66 @@ if [ "$PROJECT_ID" = "YOUR_GCP_PROJECT_ID" ]; then
   exit 1
 fi
 
-# Check for version bump flags
+# Parse arguments - separate version flags from service names
 SKIP_VERSION_BUMP=false
 VERSION_BUMP_TYPE="patch"  # default: patch, options: patch, minor, major
+SERVICES_TO_DEPLOY=()
 
-if [[ "$1" == "--no-bump" ]]; then
-  SKIP_VERSION_BUMP=true
-  echo "⚠️  Version bumping skipped (--no-bump flag detected)"
-elif [[ "$1" == "--patch" ]]; then
-  VERSION_BUMP_TYPE="patch"
-  echo "📦 Version bump type: patch"
-elif [[ "$1" == "--minor" ]]; then
-  VERSION_BUMP_TYPE="minor"
-  echo "📦 Version bump type: minor"
-elif [[ "$1" == "--major" ]]; then
-  VERSION_BUMP_TYPE="major"
-  echo "📦 Version bump type: major"
-elif [[ -n "$1" ]]; then
-  echo "❌ Unknown flag: $1"
-  echo "Usage: ./deploy.sh [--patch|--minor|--major|--no-bump]"
-  exit 1
+# Valid service names
+VALID_SERVICES=("api" "commit-worker" "user-worker" "frontend")
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    --no-bump)
+      SKIP_VERSION_BUMP=true
+      ;;
+    --patch)
+      VERSION_BUMP_TYPE="patch"
+      ;;
+    --minor)
+      VERSION_BUMP_TYPE="minor"
+      ;;
+    --major)
+      VERSION_BUMP_TYPE="major"
+      ;;
+    *)
+      # Check if it's a valid service name
+      if [[ " ${VALID_SERVICES[@]} " =~ " ${arg} " ]]; then
+        SERVICES_TO_DEPLOY+=("$arg")
+      else
+        echo "❌ Unknown argument: $arg"
+        echo ""
+        echo "Usage: ./deploy.sh [--patch|--minor|--major|--no-bump] [service1] [service2] ..."
+        echo ""
+        echo "Available services: ${VALID_SERVICES[*]}"
+        echo ""
+        echo "Examples:"
+        echo "  ./deploy.sh                           # Deploy all services"
+        echo "  ./deploy.sh api                       # Deploy only API"
+        echo "  ./deploy.sh api frontend              # Deploy API and Frontend"
+        echo "  ./deploy.sh --no-bump commit-worker   # Deploy commit-worker without version bump"
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+# If no services specified, deploy all
+if [ ${#SERVICES_TO_DEPLOY[@]} -eq 0 ]; then
+  SERVICES_TO_DEPLOY=("${VALID_SERVICES[@]}")
+  echo "📦 Deploying all services"
 else
-  echo "📦 Version bump type: patch (default)"
+  echo "📦 Deploying services: ${SERVICES_TO_DEPLOY[*]}"
 fi
+
+# Display version bump info
+if [ "$SKIP_VERSION_BUMP" = true ]; then
+  echo "⚠️  Version bumping skipped (--no-bump flag detected)"
+else
+  echo "📦 Version bump type: ${VERSION_BUMP_TYPE}"
+fi
+echo ""
 
 # Function to increment version based on type
 increment_version() {
@@ -158,20 +205,168 @@ if ! command -v envsubst &> /dev/null; then
   exit 1
 fi
 
+# Function to check if a service should be deployed
+should_deploy_service() {
+  local service=$1
+  for s in "${SERVICES_TO_DEPLOY[@]}"; do
+    if [ "$s" = "$service" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Function to deploy API service
+deploy_api() {
+  local version=$1
+  echo "📦 Building and deploying Backend API..."
+  cd backend
+  docker build -f Dockerfile.prod \
+    -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${version} \
+    --platform linux/amd64 \
+    .
+  echo "📤 Pushing API image to Artifact Registry..."
+  docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${version}
+  cd ..
+
+  # Cleanup old API images
+  cleanup_old_images "api" "${version}"
+
+  # Generate cloudrun.yaml from template using envsubst
+  echo "📝 Generating cloudrun.yaml from template..."
+  export IMAGE_TAG=${version}
+  envsubst < cloudrun.yaml.template > cloudrun.yaml
+
+  # Deploy to Cloud Run
+  gcloud run services replace cloudrun.yaml \
+    --project=${PROJECT_ID} \
+    --region=${REGION}
+  echo "✅ Backend API deployed (version ${version})"
+}
+
+# Function to deploy Commit Worker
+deploy_commit_worker() {
+  local version=$1
+  echo "📦 Building and deploying Commit Worker..."
+  cd backend
+  docker build --no-cache -f Dockerfile.cloudrun-commit-worker \
+    -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${version} \
+    --platform linux/amd64 \
+    .
+  echo "📤 Pushing Commit Worker image to Artifact Registry..."
+  docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${version}
+  cd ..
+
+  # Cleanup old Commit Worker images
+  cleanup_old_images "commit-worker" "${version}"
+
+  # Generate cloudrun-job-commit-worker.yaml from template using envsubst
+  echo "📝 Generating cloudrun-job-commit-worker.yaml from template..."
+  export JOB_NAME="commit-worker"
+  export IMAGE_NAME="commit-worker"
+  export IMAGE_TAG=${version}
+  envsubst < cloudrun-job.yaml.template > cloudrun-job-commit-worker.yaml
+
+  # Deploy Commit Worker to Cloud Run Jobs
+  if gcloud run jobs describe commit-worker \
+    --region=${REGION} \
+    --project=${PROJECT_ID} &>/dev/null; then
+    echo "  Updating existing commit-worker job..."
+    gcloud run jobs update commit-worker \
+      --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${version} \
+      --region=${REGION} \
+      --project=${PROJECT_ID}
+  else
+    echo "  Creating new commit-worker job..."
+    gcloud run jobs replace cloudrun-job-commit-worker.yaml \
+      --project=${PROJECT_ID} \
+      --region=${REGION}
+  fi
+  echo "✅ Commit Worker deployed (version ${version})"
+}
+
+# Function to deploy User Worker
+deploy_user_worker() {
+  local version=$1
+  echo "📦 Building and deploying User Worker..."
+  cd backend
+  docker build --no-cache -f Dockerfile.cloudrun-user-worker \
+    -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${version} \
+    --platform linux/amd64 \
+    .
+  echo "📤 Pushing User Worker image to Artifact Registry..."
+  docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${version}
+  cd ..
+
+  # Cleanup old User Worker images
+  cleanup_old_images "user-worker" "${version}"
+
+  # Generate cloudrun-job-user-worker.yaml from template using envsubst
+  echo "📝 Generating cloudrun-job-user-worker.yaml from template..."
+  export JOB_NAME="user-worker"
+  export IMAGE_NAME="user-worker"
+  export IMAGE_TAG=${version}
+  envsubst < cloudrun-job.yaml.template > cloudrun-job-user-worker.yaml
+
+  # Deploy User Worker to Cloud Run Jobs
+  if gcloud run jobs describe user-worker \
+    --region=${REGION} \
+    --project=${PROJECT_ID} &>/dev/null; then
+    echo "  Updating existing user-worker job..."
+    gcloud run jobs update user-worker \
+      --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${version} \
+      --region=${REGION} \
+      --project=${PROJECT_ID}
+  else
+    echo "  Creating new user-worker job..."
+    gcloud run jobs replace cloudrun-job-user-worker.yaml \
+      --project=${PROJECT_ID} \
+      --region=${REGION}
+  fi
+  echo "✅ User Worker deployed (version ${version})"
+}
+
+# Function to deploy Frontend
+deploy_frontend() {
+  echo "📦 Deploying Frontend..."
+  cd frontend
+  vercel --prod
+  cd ..
+  echo "✅ Frontend deployed"
+}
+
+# Determine which backend services need version bumping
+NEEDS_BACKEND_VERSION=false
+for service in "${SERVICES_TO_DEPLOY[@]}"; do
+  if [[ "$service" == "api" || "$service" == "commit-worker" || "$service" == "user-worker" ]]; then
+    NEEDS_BACKEND_VERSION=true
+    break
+  fi
+done
+
+NEEDS_FRONTEND_VERSION=false
+for service in "${SERVICES_TO_DEPLOY[@]}"; do
+  if [[ "$service" == "frontend" ]]; then
+    NEEDS_FRONTEND_VERSION=true
+    break
+  fi
+done
+
 # Get current versions from package.json
 CURRENT_BACKEND_VERSION=$(cd backend && node -p "require('./package.json').version")
 CURRENT_FRONTEND_VERSION=$(cd frontend && node -p "require('./package.json').version")
 
-if [ "$SKIP_VERSION_BUMP" = false ]; then
-  # Increment versions based on bump type
+# Handle version bumping
+BACKEND_VERSION=$CURRENT_BACKEND_VERSION
+FRONTEND_VERSION=$CURRENT_FRONTEND_VERSION
+
+if [ "$SKIP_VERSION_BUMP" = false ] && [ "$NEEDS_BACKEND_VERSION" = true ]; then
+  # Increment backend version based on bump type
   NEW_BACKEND_VERSION=$(increment_version $CURRENT_BACKEND_VERSION $VERSION_BUMP_TYPE)
-  NEW_FRONTEND_VERSION=$(increment_version $CURRENT_FRONTEND_VERSION $VERSION_BUMP_TYPE)
-
-  echo "📦 Version bump..."
-  echo "  Backend: ${CURRENT_BACKEND_VERSION} -> ${NEW_BACKEND_VERSION}"
-  echo "  Frontend: ${CURRENT_FRONTEND_VERSION} -> ${NEW_FRONTEND_VERSION}"
-  echo ""
-
+  BACKEND_VERSION=$NEW_BACKEND_VERSION
+  
+  echo "📦 Backend version bump: ${CURRENT_BACKEND_VERSION} -> ${NEW_BACKEND_VERSION}"
+  
   # Update backend package.json
   echo "📝 Updating backend/package.json..."
   cd backend
@@ -182,7 +377,15 @@ if [ "$SKIP_VERSION_BUMP" = false ]; then
     fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
   "
   cd ..
+fi
 
+if [ "$SKIP_VERSION_BUMP" = false ] && [ "$NEEDS_FRONTEND_VERSION" = true ]; then
+  # Increment frontend version based on bump type
+  NEW_FRONTEND_VERSION=$(increment_version $CURRENT_FRONTEND_VERSION $VERSION_BUMP_TYPE)
+  FRONTEND_VERSION=$NEW_FRONTEND_VERSION
+  
+  echo "📦 Frontend version bump: ${CURRENT_FRONTEND_VERSION} -> ${NEW_FRONTEND_VERSION}"
+  
   # Update frontend package.json
   echo "📝 Updating frontend/package.json..."
   cd frontend
@@ -193,156 +396,93 @@ if [ "$SKIP_VERSION_BUMP" = false ]; then
     fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
   "
   cd ..
-
-  # Set versions for deployment
-  BACKEND_VERSION=$NEW_BACKEND_VERSION
-  FRONTEND_VERSION=$NEW_FRONTEND_VERSION
-else
-  # Use current versions without bumping
-  BACKEND_VERSION=$CURRENT_BACKEND_VERSION
-  FRONTEND_VERSION=$CURRENT_FRONTEND_VERSION
 fi
 
+echo ""
 echo "🚀 Starting deployment..."
-echo "Backend version: ${BACKEND_VERSION}"
-echo "Frontend version: ${FRONTEND_VERSION}"
+if [ "$NEEDS_BACKEND_VERSION" = true ]; then
+  echo "Backend version: ${BACKEND_VERSION}"
+fi
+if [ "$NEEDS_FRONTEND_VERSION" = true ]; then
+  echo "Frontend version: ${FRONTEND_VERSION}"
+fi
 echo ""
 
-# Ensure Artifact Registry repository exists
-ensure_artifact_registry_repo
-
-# Configure Docker for Artifact Registry
-echo "🔐 Configuring Docker for Artifact Registry..."
-gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
-
-# Deploy Backend API
-echo "📦 Building and deploying Backend API..."
-cd backend
-docker build -f Dockerfile.prod \
-  -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${BACKEND_VERSION} \
-  --platform linux/amd64 \
-  .
-echo "📤 Pushing API image to Artifact Registry..."
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${BACKEND_VERSION}
-cd ..
-
-# Cleanup old API images
-cleanup_old_images "api" "${BACKEND_VERSION}"
-
-# Generate cloudrun.yaml from template using envsubst
-echo "📝 Generating cloudrun.yaml from template..."
-export IMAGE_TAG=${BACKEND_VERSION}
-envsubst < cloudrun.yaml.template > cloudrun.yaml
-
-# Deploy to Cloud Run
-gcloud run services replace cloudrun.yaml \
-  --project=${PROJECT_ID} \
-  --region=${REGION}
-echo "✅ Backend API deployed (version ${BACKEND_VERSION})"
-
-# Deploy Commit Worker
-echo "📦 Building and deploying Commit Worker..."
-cd backend
-docker build --no-cache -f Dockerfile.cloudrun-commit-worker \
-  -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${BACKEND_VERSION} \
-  --platform linux/amd64 \
-  .
-echo "📤 Pushing Commit Worker image to Artifact Registry..."
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${BACKEND_VERSION}
-cd ..
-
-# Cleanup old Commit Worker images
-cleanup_old_images "commit-worker" "${BACKEND_VERSION}"
-
-# Generate cloudrun-job-commit-worker.yaml from template using envsubst
-echo "📝 Generating cloudrun-job-commit-worker.yaml from template..."
-export JOB_NAME="commit-worker"
-export IMAGE_NAME="commit-worker"
-export IMAGE_TAG=${BACKEND_VERSION}
-envsubst < cloudrun-job.yaml.template > cloudrun-job-commit-worker.yaml
-
-# Deploy Commit Worker to Cloud Run Jobs
-if gcloud run jobs describe commit-worker \
-  --region=${REGION} \
-  --project=${PROJECT_ID} &>/dev/null; then
-  echo "  Updating existing commit-worker job..."
-  gcloud run jobs update commit-worker \
-    --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${BACKEND_VERSION} \
-    --region=${REGION} \
-    --project=${PROJECT_ID}
-else
-  echo "  Creating new commit-worker job..."
-  gcloud run jobs replace cloudrun-job-commit-worker.yaml \
-    --project=${PROJECT_ID} \
-    --region=${REGION}
+# Ensure Artifact Registry repository exists (only needed for backend services)
+if [ "$NEEDS_BACKEND_VERSION" = true ]; then
+  ensure_artifact_registry_repo
+  
+  # Configure Docker for Artifact Registry
+  echo "🔐 Configuring Docker for Artifact Registry..."
+  gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 fi
-echo "✅ Commit Worker deployed (version ${BACKEND_VERSION})"
 
-# Deploy User Worker
-echo "📦 Building and deploying User Worker..."
-cd backend
-docker build --no-cache -f Dockerfile.cloudrun-user-worker \
-  -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${BACKEND_VERSION} \
-  --platform linux/amd64 \
-  .
-echo "📤 Pushing User Worker image to Artifact Registry..."
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${BACKEND_VERSION}
-cd ..
+# Deploy services based on SERVICES_TO_DEPLOY array
+for service in "${SERVICES_TO_DEPLOY[@]}"; do
+  case $service in
+    api)
+      deploy_api "$BACKEND_VERSION"
+      ;;
+    commit-worker)
+      deploy_commit_worker "$BACKEND_VERSION"
+      ;;
+    user-worker)
+      deploy_user_worker "$BACKEND_VERSION"
+      ;;
+    frontend)
+      deploy_frontend
+      ;;
+  esac
+  echo ""
+done
 
-# Cleanup old User Worker images
-cleanup_old_images "user-worker" "${BACKEND_VERSION}"
-
-# Generate cloudrun-job-user-worker.yaml from template using envsubst
-echo "📝 Generating cloudrun-job-user-worker.yaml from template..."
-export JOB_NAME="user-worker"
-export IMAGE_NAME="user-worker"
-export IMAGE_TAG=${BACKEND_VERSION}
-envsubst < cloudrun-job.yaml.template > cloudrun-job-user-worker.yaml
-
-# Deploy User Worker to Cloud Run Jobs
-if gcloud run jobs describe user-worker \
-  --region=${REGION} \
-  --project=${PROJECT_ID} &>/dev/null; then
-  echo "  Updating existing user-worker job..."
-  gcloud run jobs update user-worker \
-    --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${BACKEND_VERSION} \
-    --region=${REGION} \
-    --project=${PROJECT_ID}
-else
-  echo "  Creating new user-worker job..."
-  gcloud run jobs replace cloudrun-job-user-worker.yaml \
-    --project=${PROJECT_ID} \
-    --region=${REGION}
-fi
-echo "✅ User Worker deployed (version ${BACKEND_VERSION})"
-
-# Deploy Frontend
-echo "📦 Deploying Frontend..."
-cd frontend
-vercel --prod
-cd ..
-echo "✅ Frontend deployed"
-
-echo ""
 echo "🎉 Deployment complete!"
 echo ""
 echo "📋 Next steps:"
 if [ "$SKIP_VERSION_BUMP" = false ]; then
-  echo "  ⚠️  Don't forget to commit the version changes:"
-  echo "    git add backend/package.json frontend/package.json"
-  echo "    git commit -m \"chore: bump version to ${BACKEND_VERSION} (backend) and ${FRONTEND_VERSION} (frontend)\""
-  echo ""
-  echo "  ⚠️  Note: Generated YAML files (cloudrun.yaml, cloudrun-job-*.yaml) are ignored by git"
-  echo "     They are generated from templates and should not be committed."
-  echo ""
+  files_to_commit=()
+  if [ "$NEEDS_BACKEND_VERSION" = true ]; then
+    files_to_commit+=("backend/package.json")
+  fi
+  if [ "$NEEDS_FRONTEND_VERSION" = true ]; then
+    files_to_commit+=("frontend/package.json")
+  fi
+  
+  if [ ${#files_to_commit[@]} -gt 0 ]; then
+    echo "  ⚠️  Don't forget to commit the version changes:"
+    echo "    git add ${files_to_commit[*]}"
+    if [ "$NEEDS_BACKEND_VERSION" = true ] && [ "$NEEDS_FRONTEND_VERSION" = true ]; then
+      echo "    git commit -m \"chore: bump version to ${BACKEND_VERSION} (backend) and ${FRONTEND_VERSION} (frontend)\""
+    elif [ "$NEEDS_BACKEND_VERSION" = true ]; then
+      echo "    git commit -m \"chore: bump backend version to ${BACKEND_VERSION}\""
+    else
+      echo "    git commit -m \"chore: bump frontend version to ${FRONTEND_VERSION}\""
+    fi
+    echo ""
+    echo "  ⚠️  Note: Generated YAML files (cloudrun.yaml, cloudrun-job-*.yaml) are ignored by git"
+    echo "     They are generated from templates and should not be committed."
+    echo ""
+  fi
 fi
 echo "Verify versions:"
-echo "  Backend: curl https://your-backend-url.run.app/version"
-echo "  Frontend: https://your-app.vercel.app (check footer)"
+if should_deploy_service "api"; then
+  echo "  Backend: curl https://your-backend-url.run.app/version"
+fi
+if should_deploy_service "frontend"; then
+  echo "  Frontend: https://your-app.vercel.app (check footer)"
+fi
 echo ""
-echo "📊 Image storage:"
-echo "  Repository: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
-echo "  API: api:${BACKEND_VERSION}"
-echo "  Commit Worker: commit-worker:${BACKEND_VERSION}"
-echo "  User Worker: user-worker:${BACKEND_VERSION}"
+if [ "$NEEDS_BACKEND_VERSION" = true ]; then
+  echo "📊 Image storage:"
+  echo "  Repository: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
+  if should_deploy_service "api"; then
+    echo "  API: api:${BACKEND_VERSION}"
+  fi
+  if should_deploy_service "commit-worker"; then
+    echo "  Commit Worker: commit-worker:${BACKEND_VERSION}"
+  fi
+  if should_deploy_service "user-worker"; then
+    echo "  User Worker: user-worker:${BACKEND_VERSION}"
+  fi
+fi
 
