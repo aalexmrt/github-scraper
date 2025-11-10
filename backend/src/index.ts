@@ -29,7 +29,9 @@ const startServer = async () => {
 
     // Populate demo repos if enabled
     if (process.env.POPULATE_DEMO_REPOS === 'true') {
-      logger.info('[SERVER] POPULATE_DEMO_REPOS is enabled, populating demo repositories...');
+      logger.info(
+        '[SERVER] POPULATE_DEMO_REPOS is enabled, populating demo repositories...'
+      );
       try {
         await populateDemoRepos({ silent: false });
         logger.info('[SERVER] Demo repositories population completed.');
@@ -42,7 +44,7 @@ const startServer = async () => {
     // Register CORS
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const isProduction = process.env.NODE_ENV === 'production';
-    const corsOrigins = isProduction 
+    const corsOrigins = isProduction
       ? [frontendUrl, 'https://github-scraper-psi.vercel.app'] // Allow both direct and Vercel proxy
       : frontendUrl;
     logger.info('[SERVER] Registering CORS for:', corsOrigins);
@@ -61,7 +63,9 @@ const startServer = async () => {
     logger.info('[SERVER] Registering session plugin');
     await app.register(require('@fastify/session'), {
       cookieName: 'sessionId',
-      secret: process.env.SESSION_SECRET || 'a-very-long-random-string-change-in-production',
+      secret:
+        process.env.SESSION_SECRET ||
+        'a-very-long-random-string-change-in-production',
       cookie: {
         secure: isProduction,
         httpOnly: true,
@@ -85,6 +89,18 @@ const startServer = async () => {
       return reply.status(200).send({ message: 'Server is running.' });
     });
 
+    app.get('/version', async (request, reply) => {
+      // Use path resolution to find package.json relative to the compiled file location
+      const path = require('path');
+      const fs = require('fs');
+      const packageJsonPath = path.join(__dirname, '../../package.json');
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      return reply.status(200).send({
+        api: packageJson.version,
+        worker: packageJson.version, // Worker uses same codebase
+      });
+    });
+
     app.post('/leaderboard', async (request, reply) => {
       const { repoUrl } = request.query as { repoUrl?: string };
       const { authorization } = request.headers;
@@ -96,7 +112,9 @@ const startServer = async () => {
       }
 
       if (!isValidGitHubUrl(repoUrl)) {
-        return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
+        return reply
+          .status(400)
+          .send({ error: 'Invalid GitHub repository URL.' });
       }
 
       const normalizedUrl = normalizeRepoUrl(repoUrl);
@@ -107,7 +125,8 @@ const startServer = async () => {
 
         if (!dbRepository) {
           const repoName =
-            normalizedUrl.split('/').pop()?.replace('.git', '') || 'default_repo';
+            normalizedUrl.split('/').pop()?.replace('.git', '') ||
+            'default_repo';
           dbRepository = await prisma.repository.create({
             data: {
               url: normalizedUrl,
@@ -116,7 +135,7 @@ const startServer = async () => {
               lastAttempt: new Date(),
             },
           });
-          
+
           // Get token from authenticated user session, or fall back to Authorization header, or use env token
           let token: string | null = null;
           const userToken = await getUserToken(request);
@@ -125,7 +144,7 @@ const startServer = async () => {
           } else if (authorization) {
             token = authorization.replace('Bearer ', '');
           }
-          
+
           await repoQueue.add({ dbRepository, token });
         }
 
@@ -167,7 +186,9 @@ const startServer = async () => {
       }
 
       if (!isValidGitHubUrl(repoUrl)) {
-        return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
+        return reply
+          .status(400)
+          .send({ error: 'Invalid GitHub repository URL.' });
       }
 
       const normalizedUrl = normalizeRepoUrl(repoUrl);
@@ -181,7 +202,8 @@ const startServer = async () => {
 
         if (!dbRepository) {
           return reply.status(404).send({
-            error: 'Repository not found, remember to submit for processing first.',
+            error:
+              'Repository not found, remember to submit for processing first.',
           });
         }
 
@@ -201,7 +223,9 @@ const startServer = async () => {
         }
       } catch (error) {
         logger.error('Error in /leaderboard:', error);
-        return reply.status(500).send({ error: 'Failed to return leaderboard.' });
+        return reply
+          .status(500)
+          .send({ error: 'Failed to return leaderboard.' });
       }
     });
 
@@ -226,7 +250,9 @@ const startServer = async () => {
       }
 
       if (!isValidGitHubUrl(repoUrl)) {
-        return reply.status(400).send({ error: 'Invalid GitHub repository URL.' });
+        return reply
+          .status(400)
+          .send({ error: 'Invalid GitHub repository URL.' });
       }
 
       const normalizedUrl = normalizeRepoUrl(repoUrl);

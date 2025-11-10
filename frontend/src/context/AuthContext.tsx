@@ -38,70 +38,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
+  const [tokenExtracted, setTokenExtracted] = useState(false);
 
   // Helper to get backend URL for direct API calls (bypasses Vercel proxy for cookies)
   const getBackendUrl = () => {
-    return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    logger.debug('Backend URL:', url);
+    return url.replace(/\/+$/, '');
   };
 
-  // Fetch current user
-  const { data: userData, isLoading } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const backendUrl = getBackendUrl();
-      const apiUrl = `${backendUrl}/auth/me`;
-      const token = tokenStorage.get();
-      
-      logger.debug('Fetching', apiUrl);
-      logger.debug('Using auth method:', token ? 'Token' : 'Cookie');
-      
-      const headers: any = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-      
-      try {
-        const response = await axios.get(apiUrl, {
-          withCredentials: true, // Keep for backward compatibility with cookies
-          headers,
-        });
-        logger.debug('User data received:', response.data.user);
-        return response.data.user as User;
-      } catch (error: any) {
-        // 401 is expected when not authenticated - return null instead of throwing
-        if (error.response?.status === 401) {
-          logger.debug('Not authenticated (401)');
-          // Clear invalid token
-          tokenStorage.clear();
-          return null;
-        }
-        logger.error('Error fetching user:', {
-          status: error.response?.status,
-          message: error.message,
-          data: error.response?.data,
-        });
-        // For other errors, throw to let React Query handle them
-        throw error;
-      }
-    },
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-
-  // Update user state when data changes
+  // Extract token from URL synchronously on mount (before queries run)
   useEffect(() => {
-    logger.debug('User state updated:', userData ? { id: userData.id, username: userData.username } : null);
-    setUser(userData || null);
-  }, [userData]);
-
-  // Check for auth success in URL (from OAuth callback)
-  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const params = new URLSearchParams(window.location.search);
     const authStatus = params.get('auth');
     const token = params.get('token');
     
     if (authStatus === 'success' && token) {
       logger.auth('Received auth token from OAuth callback');
+      logger.debug('Token length:', token.length);
       
       // Store token securely
       tokenStorage.set(token);
@@ -112,10 +68,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       url.searchParams.delete('token');
       window.history.replaceState({}, '', url.pathname + url.hash);
       
-      // Refetch user data with new token
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      logger.auth('Token stored and URL cleaned');
     }
-  }, [queryClient]);
+    
+    setTokenExtracted(true);
+  }, []);
+
+  // Fetch current user
+  const { data: userData, isLoading } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const backendUrl = getBackendUrl();
+      const apiUrl = `${backendUrl}/auth/me`;
+      const token = tokenStorage.get();
+      
+      logger.debug('Fetching user from:', apiUrl);
+      logger.debug('Using auth method:', token ? 'Token' : 'Cookie');
+      logger.debug('Token present:', !!token);
+      
+      const headers: any = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        logger.debug('Authorization header set');
+      }
+      
+      try {
+        const response = await axios.get(apiUrl, {
+          withCredentials: true, // Keep for backward compatibility with cookies
+          headers,
+          // Don't treat 401 as an error - it's expected when not authenticated
+          validateStatus: (status) => status === 200 || status === 401,
+        });
+        
+        // Handle 401 response (not authenticated)
+        if (response.status === 401) {
+          logger.debug('Not authenticated (401) - expected when no valid token/session');
+          // Clear invalid token if present
+          tokenStorage.clear();
+          return null;
+        }
+        
+        logger.debug('User data received:', response.data.user);
+        logger.auth('Authentication successful');
+        return response.data.user as User;
+      } catch (error: any) {
+        // This catch block now only handles unexpected errors (network errors, etc.)
+        logger.error('Error fetching user:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          message: error.message,
+          data: error.response?.data,
+          url: apiUrl,
+        });
+        // For unexpected errors, throw to let React Query handle them
+        throw error;
+      }
+    },
+    enabled: tokenExtracted, // Wait for token extraction before running query
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // Update user state when data changes
+  useEffect(() => {
+    logger.debug('User state updated:', userData ? { id: userData.id, username: userData.username } : null);
+    setUser(userData || null);
+  }, [userData]);
 
   // Login function - redirects to backend OAuth endpoint
   const login = () => {

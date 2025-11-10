@@ -10,7 +10,7 @@ spec:
       template:
         spec:
           containers:
-            - image: gcr.io/personal-gcp-477623/worker:latest
+            - image: gcr.io/personal-gcp-477623/worker:1.0.7
               resources:
                 limits:
                   cpu: '1'

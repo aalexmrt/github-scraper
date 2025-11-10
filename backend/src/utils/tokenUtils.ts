@@ -7,9 +7,18 @@ const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 
 if (!JWT_SECRET) {
   logger.warn('No JWT_SECRET or SESSION_SECRET found! Using insecure default.');
+  logger.warn('This will cause authentication failures if tokens were generated with a different secret.');
 }
 
 const SECRET = JWT_SECRET || 'INSECURE-DEFAULT-CHANGE-IN-PRODUCTION';
+
+// Log secret status at module load (without exposing the actual secret)
+if (SECRET && SECRET !== 'INSECURE-DEFAULT-CHANGE-IN-PRODUCTION') {
+  logger.debug('JWT secret configured:', SECRET.substring(0, 10) + '...');
+} else {
+  logger.error('JWT secret is using insecure default! Authentication will fail.');
+}
+
 const TOKEN_EXPIRATION = '7d'; // 7 days
 
 export interface TokenPayload {
@@ -24,9 +33,16 @@ export interface TokenPayload {
  */
 export function generateAuthToken(userId: number, sessionId: string): string {
   try {
-    return jwt.sign({ userId, sessionId }, SECRET, {
+    if (!SECRET || SECRET === 'INSECURE-DEFAULT-CHANGE-IN-PRODUCTION') {
+      logger.warn('Using insecure default secret for token generation!');
+    }
+    
+    logger.debug('Generating token for user:', userId, 'session:', sessionId);
+    const token = jwt.sign({ userId, sessionId }, SECRET, {
       expiresIn: TOKEN_EXPIRATION,
     });
+    logger.debug('Token generated successfully, length:', token.length);
+    return token;
   } catch (error) {
     logger.error('Failed to generate token:', error);
     throw new Error('Failed to generate authentication token');
@@ -64,11 +80,20 @@ export function verifyAuthToken(token: string): TokenPayload | null {
  * Also verifies the user still exists in database
  */
 export async function validateAuthToken(token: string): Promise<number | null> {
+  if (!token || token.trim().length === 0) {
+    logger.debug('Empty token provided');
+    return null;
+  }
+
+  logger.debug('Validating token, length:', token.length);
   const payload = verifyAuthToken(token);
 
   if (!payload) {
+    logger.debug('Token verification failed - invalid or expired');
     return null;
   }
+
+  logger.debug('Token payload verified:', { userId: payload.userId, sessionId: payload.sessionId });
 
   // Verify user still exists
   try {
@@ -82,6 +107,7 @@ export async function validateAuthToken(token: string): Promise<number | null> {
       return null;
     }
 
+    logger.debug('User validated successfully:', user.id);
     return user.id;
   } catch (error) {
     logger.error('Error validating token:', error);
