@@ -3,7 +3,7 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 
 echo "🔐 Fetching secrets from GCP Secret Manager..."
 
@@ -42,4 +42,4 @@ docker run --rm -it \
   -e R2_BUCKET_NAME="${R2_BUCKET_NAME}" \
   -e FRONTEND_URL="http://localhost:3001" \
   -e BACKEND_URL="http://localhost:8080" \
-  gcr.io/personal-gcp-477623/api:latest
+  gcr.io/${PROJECT_ID}/api:latest

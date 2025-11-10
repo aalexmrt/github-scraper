@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 
 echo "🧹 Cleaning up failed and queued jobs from production..."
 echo ""

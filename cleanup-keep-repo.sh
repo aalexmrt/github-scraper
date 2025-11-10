@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 REPO_URL="${1:-https://github.com/aalexmrt/github-scraper}"
 
 echo "🧹 Cleaning up queue - keeping only: ${REPO_URL}"

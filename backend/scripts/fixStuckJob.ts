@@ -85,7 +85,7 @@ async function fixStuckJob() {
     logger.info('🧹 Cleanup complete!');
     logger.info('   The scheduler will retry at the next scheduled time.');
     logger.info(
-      '   Or manually trigger: gcloud run jobs execute worker --region=us-east1 --project=personal-gcp-477623\n'
+      '   Or manually trigger: gcloud run jobs execute worker --region=YOUR_REGION --project=YOUR_GCP_PROJECT_ID\n'
     );
 
     await repoQueue.close();

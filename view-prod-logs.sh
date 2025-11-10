@@ -4,8 +4,8 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
-REGION="us-east1"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
 SERVICE_NAME="api"
 JOB_NAME="worker"
 

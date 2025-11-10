@@ -1,4 +1,7 @@
-#!/bin/bash
+BACKEND_URL="${BACKEND_URL:-https://your-backend-url.run.app}"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
+
 echo "=== Checking /version endpoint ==="
 echo ""
 
@@ -21,14 +24,14 @@ curl -s http://localhost:3000/version 2>/dev/null && echo "✅ Local endpoint wo
 
 echo ""
 echo "5. Testing deployed endpoint:"
-curl -s https://api-sgmtwgzrlq-ue.a.run.app/version | head -c 100
+curl -s ${BACKEND_URL}/version | head -c 100
 echo ""
 
 echo ""
 echo "6. Current Cloud Run revision:"
 gcloud run services describe api \
-  --region=us-east1 \
-  --project=personal-gcp-477623 \
+  --region=${REGION} \
+  --project=${PROJECT_ID} \
   --format="value(status.latestReadyRevisionName)" 2>/dev/null || echo "Could not fetch"
 
 echo ""
@@ -36,5 +39,5 @@ echo "7. Recent logs (last 5 lines):"
 gcloud logging read \
   'resource.type=cloud_run_revision AND resource.labels.service_name=api' \
   --limit=5 \
-  --project=personal-gcp-477623 \
+  --project=${PROJECT_ID} \
   --format="value(textPayload)" 2>/dev/null | tail -5 || echo "Could not fetch logs"

@@ -6,7 +6,9 @@ set -e
 echo "📤 Adding demo repositories to the queue..."
 echo ""
 
-cd /Users/alexmartinez/personal_ws/github-scraper/backend
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "${SCRIPT_DIR}/backend"
 npm run populate-demo
 
 echo ""
@@ -19,7 +21,9 @@ echo ""
 echo "🚀 Manually triggering worker (one-time)..."
 echo ""
 
-gcloud run jobs execute worker --region=us-east1 --project=personal-gcp-477623 --wait
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
+gcloud run jobs execute worker --region=${REGION} --project=${PROJECT_ID} --wait
 
 echo ""
 echo "✅ Done! The scheduler will continue processing jobs every 2 minutes."

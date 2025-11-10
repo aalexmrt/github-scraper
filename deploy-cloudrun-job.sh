@@ -5,8 +5,8 @@
 set -e
 
 # Configuration (set these environment variables)
-PROJECT_ID=${PROJECT_ID:-"personal-gcp-477623"}
-REGION=${REGION:-"us-east1"}
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
 JOB_NAME=${JOB_NAME:-"github-scraper-worker"}
 IMAGE_NAME="gcr.io/${PROJECT_ID}/github-scraper-worker:latest"
 

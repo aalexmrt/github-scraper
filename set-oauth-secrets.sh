@@ -4,13 +4,13 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
-REGION="us-east1"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
 
 echo "🔐 Setting up GitHub OAuth secrets for production..."
 echo ""
 echo "⚠️  Make sure you've created a Production OAuth App with callback URL:"
-echo "   https://api-sgmtwgzrlq-ue.a.run.app/auth/github/callback"
+echo "   https://your-backend-url.run.app/auth/github/callback"
 echo ""
 
 # GitHub OAuth Client ID (Production)
@@ -61,8 +61,8 @@ fi
 # Backend URL (Cloud Run)
 echo ""
 echo "🌐 Backend URL (Cloud Run)"
-read -p "Enter BACKEND_URL (default: https://api-sgmtwgzrlq-ue.a.run.app): " BACKEND_URL
-BACKEND_URL=${BACKEND_URL:-https://api-sgmtwgzrlq-ue.a.run.app}
+read -p "Enter BACKEND_URL (default: https://your-backend-url.run.app): " BACKEND_URL
+BACKEND_URL=${BACKEND_URL:-https://your-backend-url.run.app}
 printf '%s' "${BACKEND_URL}" | gcloud secrets create backend-url \
   --data-file=- \
   --project=${PROJECT_ID} 2>/dev/null || \

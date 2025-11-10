@@ -6,8 +6,8 @@
 
 set -e
 
-PROJECT_ID=${PROJECT_ID:-"personal-gcp-477623"}
-REGION=${REGION:-"us-east1"}
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
 COMMIT_JOB_NAME=${COMMIT_JOB_NAME:-"commit-worker"}
 USER_JOB_NAME=${USER_JOB_NAME:-"user-worker"}
 COMMIT_SCHEDULER_NAME="${COMMIT_JOB_NAME}-scheduler"

@@ -52,7 +52,7 @@ const startServer = async () => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const isProduction = process.env.NODE_ENV === 'production';
     const corsOrigins = isProduction
-      ? [frontendUrl, 'https://github-scraper-psi.vercel.app'] // Allow both direct and Vercel proxy
+      ? [frontendUrl] // Use FRONTEND_URL from environment
       : frontendUrl;
     logger.info('[SERVER] Registering CORS for:', corsOrigins);
     await app.register(require('@fastify/cors'), {

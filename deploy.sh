@@ -15,8 +15,8 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
-REGION="us-east1"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+REGION="${REGION:-us-east1}"
 REPOSITORY=${REPOSITORY:-"github-scraper"}  # Artifact Registry repository name
 
 # Check for version bump flags
@@ -140,7 +140,7 @@ ensure_artifact_registry_repo() {
 }
 
 # Ensure variables are exported for envsubst
-export PROJECT_ID REGION REPOSITORY
+export PROJECT_ID REGION REPOSITORY JOB_NAME IMAGE_NAME IMAGE_TAG
 
 # Check if envsubst is available
 if ! command -v envsubst &> /dev/null; then
@@ -231,31 +231,81 @@ gcloud run services replace cloudrun.yaml \
   --region=${REGION}
 echo "✅ Backend API deployed (version ${BACKEND_VERSION})"
 
-# Deploy Worker
-echo "📦 Building and deploying Worker..."
+# Deploy Commit Worker
+echo "📦 Building and deploying Commit Worker..."
 cd backend
-docker build --no-cache -f Dockerfile.cloudrun-worker \
-  -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/worker:${BACKEND_VERSION} \
+docker build --no-cache -f Dockerfile.cloudrun-commit-worker \
+  -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${BACKEND_VERSION} \
   --platform linux/amd64 \
   .
-echo "📤 Pushing Worker image to Artifact Registry..."
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/worker:${BACKEND_VERSION}
+echo "📤 Pushing Commit Worker image to Artifact Registry..."
+docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${BACKEND_VERSION}
 cd ..
 
-# Cleanup old Worker images
-cleanup_old_images "worker" "${BACKEND_VERSION}"
+# Cleanup old Commit Worker images
+cleanup_old_images "commit-worker" "${BACKEND_VERSION}"
 
-# Generate cloudrun-job.yaml from template using envsubst
-echo "📝 Generating cloudrun-job.yaml from template..."
+# Generate cloudrun-job-commit-worker.yaml from template using envsubst
+echo "📝 Generating cloudrun-job-commit-worker.yaml from template..."
+export JOB_NAME="commit-worker"
+export IMAGE_NAME="commit-worker"
 export IMAGE_TAG=${BACKEND_VERSION}
-envsubst < cloudrun-job.yaml.template > cloudrun-job.yaml
+envsubst < cloudrun-job.yaml.template > cloudrun-job-commit-worker.yaml
 
-# Deploy to Cloud Run Jobs (use update instead of replace to avoid version conflicts)
-gcloud run jobs update worker \
-  --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/worker:${BACKEND_VERSION} \
+# Deploy Commit Worker to Cloud Run Jobs
+if gcloud run jobs describe commit-worker \
   --region=${REGION} \
-  --project=${PROJECT_ID}
-echo "✅ Worker deployed (version ${BACKEND_VERSION})"
+  --project=${PROJECT_ID} &>/dev/null; then
+  echo "  Updating existing commit-worker job..."
+  gcloud run jobs update commit-worker \
+    --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/commit-worker:${BACKEND_VERSION} \
+    --region=${REGION} \
+    --project=${PROJECT_ID}
+else
+  echo "  Creating new commit-worker job..."
+  gcloud run jobs replace cloudrun-job-commit-worker.yaml \
+    --project=${PROJECT_ID} \
+    --region=${REGION}
+fi
+echo "✅ Commit Worker deployed (version ${BACKEND_VERSION})"
+
+# Deploy User Worker
+echo "📦 Building and deploying User Worker..."
+cd backend
+docker build --no-cache -f Dockerfile.cloudrun-user-worker \
+  -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${BACKEND_VERSION} \
+  --platform linux/amd64 \
+  .
+echo "📤 Pushing User Worker image to Artifact Registry..."
+docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${BACKEND_VERSION}
+cd ..
+
+# Cleanup old User Worker images
+cleanup_old_images "user-worker" "${BACKEND_VERSION}"
+
+# Generate cloudrun-job-user-worker.yaml from template using envsubst
+echo "📝 Generating cloudrun-job-user-worker.yaml from template..."
+export JOB_NAME="user-worker"
+export IMAGE_NAME="user-worker"
+export IMAGE_TAG=${BACKEND_VERSION}
+envsubst < cloudrun-job.yaml.template > cloudrun-job-user-worker.yaml
+
+# Deploy User Worker to Cloud Run Jobs
+if gcloud run jobs describe user-worker \
+  --region=${REGION} \
+  --project=${PROJECT_ID} &>/dev/null; then
+  echo "  Updating existing user-worker job..."
+  gcloud run jobs update user-worker \
+    --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/user-worker:${BACKEND_VERSION} \
+    --region=${REGION} \
+    --project=${PROJECT_ID}
+else
+  echo "  Creating new user-worker job..."
+  gcloud run jobs replace cloudrun-job-user-worker.yaml \
+    --project=${PROJECT_ID} \
+    --region=${REGION}
+fi
+echo "✅ User Worker deployed (version ${BACKEND_VERSION})"
 
 # Deploy Frontend
 echo "📦 Deploying Frontend..."
@@ -270,16 +320,17 @@ echo ""
 echo "📋 Next steps:"
 if [ "$SKIP_VERSION_BUMP" = false ]; then
   echo "  ⚠️  Don't forget to commit the version changes:"
-  echo "    git add backend/package.json frontend/package.json cloudrun.yaml cloudrun-job.yaml"
+  echo "    git add backend/package.json frontend/package.json cloudrun.yaml cloudrun-job-commit-worker.yaml cloudrun-job-user-worker.yaml"
   echo "    git commit -m \"chore: bump version to ${BACKEND_VERSION} (backend) and ${FRONTEND_VERSION} (frontend)\""
   echo ""
 fi
 echo "Verify versions:"
-echo "  Backend: curl https://api-sgmtwgzrlq-ue.a.run.app/version"
-echo "  Frontend: https://github-scraper-psi.vercel.app (check footer)"
+echo "  Backend: curl https://your-backend-url.run.app/version"
+echo "  Frontend: https://your-app.vercel.app (check footer)"
 echo ""
 echo "📊 Image storage:"
 echo "  Repository: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
 echo "  API: api:${BACKEND_VERSION}"
-echo "  Worker: worker:${BACKEND_VERSION}"
+echo "  Commit Worker: commit-worker:${BACKEND_VERSION}"
+echo "  User Worker: user-worker:${BACKEND_VERSION}"
 

@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 SA_NAME="github-actions-deployer"
-REGION="us-east1"
+REGION="${REGION:-us-east1}"
 
 echo "🔧 Setting up CI/CD for GitHub Actions..."
 echo ""

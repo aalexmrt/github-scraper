@@ -1,12 +1,12 @@
 #!/bin/bash
-# Setup script for personal-gcp-477623
+# Setup script for GitHub Scraper
 # Run this after completing account creation
 
 set -e
 
 # Your configuration
-export PROJECT_ID="personal-gcp-477623"
-export REGION="us-east1"
+export PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+export REGION="${REGION:-us-east1}"
 export SERVICE="api"
 export JOB_NAME="worker"
 
@@ -28,7 +28,7 @@ echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "📝 Next steps:"
-echo "1. Complete account creation (Firebase, Neon, Upstash, Cloudflare)"
+echo "1. Complete account creation (Neon, Upstash, Cloudflare)"
 echo "2. Collect all credentials"
 echo "3. Run: ./create-secrets.sh"
 echo "4. Run: ./deploy-backend.sh"

@@ -24,7 +24,7 @@ containers:
 **2. In deployment script:**
 
 ```bash
-export PROJECT_ID="personal-gcp-477623"
+export PROJECT_ID="YOUR_GCP_PROJECT_ID"
 export REGION="us-east1"
 export REPOSITORY="github-scraper"
 export IMAGE_TAG="1.2.9"
@@ -73,7 +73,7 @@ containers:
 **2. In deployment script:**
 
 ```bash
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="YOUR_GCP_PROJECT_ID"
 REGION="us-east1"
 
 # Replace placeholder
@@ -123,7 +123,7 @@ containers:
 **2. In deployment script:**
 
 ```bash
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="YOUR_GCP_PROJECT_ID"
 REGION="us-east1"
 IMAGE_TAG="1.2.9"
 
@@ -180,7 +180,7 @@ cloudrun-job.yaml
 **3. In deployment script:**
 
 ```bash
-export PROJECT_ID="${PROJECT_ID:-personal-gcp-477623}"
+export PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 export REGION="${REGION:-us-east1}"
 export REPOSITORY="${REPOSITORY:-github-scraper}"
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
@@ -252,7 +252,7 @@ steps:
 set -e
 
 # Allow override via environment variables, with sensible defaults
-PROJECT_ID="${PROJECT_ID:-personal-gcp-477623}"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 REGION="${REGION:-us-east1}"
 REPOSITORY="${REPOSITORY:-github-scraper}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
@@ -309,7 +309,7 @@ This keeps your repository clean and prevents accidentally committing project-sp
 
 ```bash
 # At the top of deploy.sh
-PROJECT_ID="${PROJECT_ID:-personal-gcp-477623}"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 REGION="${REGION:-us-east1}"
 REPOSITORY="${REPOSITORY:-github-scraper}"
 

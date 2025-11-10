@@ -1,7 +1,7 @@
 apiVersion: run.googleapis.com/v1
 kind: Job
 metadata:
-  name: worker
+  name: ${JOB_NAME}
 spec:
   template:
     spec:
@@ -10,7 +10,7 @@ spec:
       template:
         spec:
           containers:
-            - image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/worker:${IMAGE_TAG}
+            - image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:${IMAGE_TAG}
               resources:
                 limits:
                   cpu: '1'

@@ -95,8 +95,8 @@ case $WORKER_CHOICE in
     echo ""
     echo -e "${YELLOW}🚀 Executing Cloud Run worker...${NC}"
     if command -v gcloud &> /dev/null; then
-      PROJECT_ID=${PROJECT_ID:-"personal-gcp-477623"}
-      REGION=${REGION:-"us-east1"}
+      PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
+      REGION="${REGION:-us-east1}"
       gcloud run jobs execute worker --region=$REGION --project=$PROJECT_ID --wait
     else
       echo -e "${RED}❌ gcloud CLI not found. Cannot execute Cloud Run job.${NC}"
@@ -110,7 +110,7 @@ case $WORKER_CHOICE in
     echo "To run the worker manually:"
     echo "  Local:     npm run dev:worker"
     echo "  Cloud Run: npm run dev:cloudrun-worker"
-    echo "  Or:        gcloud run jobs execute worker --region=us-east1 --project=personal-gcp-477623"
+    echo "  Or:        gcloud run jobs execute worker --region=\${REGION:-us-east1} --project=\${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
     ;;
 esac
 

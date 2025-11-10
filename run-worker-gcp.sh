@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_ID="personal-gcp-477623"
+PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
