@@ -348,9 +348,9 @@ gcloud billing projects describe personal-gcp-477623
 - **GitHub OAuth Apps**: https://github.com/settings/developers
 
 ### Documentation
-- Full OAuth Setup: `OAUTH_SETUP.md`
-- Architecture: `ARCHITECTURE.md`
-- Deployment Guide: `DEPLOYMENT.md`
+- Full OAuth Setup: `docs/OAUTH_SETUP.md`
+- Architecture: `docs/ARCHITECTURE.md`
+- Deployment Guide: `docs/DEPLOYMENT.md`
 
 ---
 

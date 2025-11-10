@@ -92,7 +92,7 @@ Frontend (Next.js) → Backend API (Fastify) → Worker Process
 - **PostgreSQL**: Persistent data storage
 - **Redis**: Job queue and caching
 
-For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+For detailed architecture documentation, see [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## 🚀 Getting Started
 
@@ -198,7 +198,7 @@ If you prefer to run only the frontend locally while keeping the backend and ser
 
    **Getting GitHub OAuth Credentials:**
 
-   See [OAUTH_SETUP.md](./OAUTH_SETUP.md) for detailed instructions on setting up GitHub OAuth.
+   See [OAUTH_SETUP.md](./docs/OAUTH_SETUP.md) for detailed instructions on setting up GitHub OAuth.
 
 2. **Start Docker Services**
 
@@ -505,7 +505,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📚 Additional Documentation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architecture and design patterns
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Detailed architecture and design patterns
 - [API Documentation](#usage) - Complete API reference
 
 ## 👤 Author
