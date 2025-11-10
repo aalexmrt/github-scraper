@@ -18,7 +18,7 @@ spec:
       containerConcurrency: 80
       timeoutSeconds: 300
       containers:
-        - image: us-east1-docker.pkg.dev/personal-gcp-477623/github-scraper/api:1.2.8
+        - image: us-east1-docker.pkg.dev/personal-gcp-477623/github-scraper/api:1.2.9
           ports:
             - containerPort: 8080
           resources:
