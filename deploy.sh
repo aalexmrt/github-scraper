@@ -36,7 +36,7 @@ echo "✅ Backend API deployed (version ${BACKEND_VERSION})"
 # Deploy Worker
 echo "📦 Building and deploying Worker..."
 cd backend
-docker build -f Dockerfile.cloudrun-worker \
+docker build --no-cache -f Dockerfile.cloudrun-worker \
   -t gcr.io/${PROJECT_ID}/worker:${BACKEND_VERSION} \
   --platform linux/amd64 \
   .

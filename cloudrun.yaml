@@ -18,7 +18,7 @@ spec:
       containerConcurrency: 80
       timeoutSeconds: 300
       containers:
-        - image: gcr.io/personal-gcp-477623/api:1.0.7
+        - image: gcr.io/personal-gcp-477623/api:1.0.9
           ports:
             - containerPort: 8080
           resources:

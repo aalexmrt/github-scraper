@@ -9,6 +9,47 @@ import { logger } from '../utils/logger';
  */
 async function processOneJob() {
   try {
+    // First, check for stuck active jobs (jobs that were interrupted)
+    // These can happen if a previous execution crashed
+    const activeJobs = await repoQueue.getActive();
+    if (activeJobs.length > 0) {
+      logger.warn(
+        `[WORKER] Found ${activeJobs.length} stuck active job(s), cleaning up...`
+      );
+      for (const job of activeJobs) {
+        try {
+          // For stuck active jobs, remove them - they'll be re-queued if needed
+          // based on repository state in the database
+          await job.remove();
+          logger.info(
+            `[WORKER] Removed stuck active job ${job.id} (repository: ${job.data.dbRepository?.url || 'N/A'})`
+          );
+        } catch (error: any) {
+          logger.error(
+            `[WORKER] Failed to remove stuck job ${job.id}: ${error.message}`
+          );
+          // If removal fails due to lock, try to update the repository state
+          // so it can be re-queued later
+          try {
+            const repoId = job.data.dbRepository?.id;
+            if (repoId) {
+              await prisma.repository.update({
+                where: { id: repoId },
+                data: { state: 'pending' },
+              });
+              logger.info(
+                `[WORKER] Reset repository ${repoId} to pending state`
+              );
+            }
+          } catch (dbError: any) {
+            logger.error(
+              `[WORKER] Failed to reset repository state: ${dbError.message}`
+            );
+          }
+        }
+      }
+    }
+
     // Get waiting jobs from the queue
     const waitingJobs = await repoQueue.getWaiting();
 
