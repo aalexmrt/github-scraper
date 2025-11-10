@@ -19,6 +19,15 @@ PROJECT_ID="${PROJECT_ID:-YOUR_GCP_PROJECT_ID}"
 REGION="${REGION:-us-east1}"
 REPOSITORY=${REPOSITORY:-"github-scraper"}  # Artifact Registry repository name
 
+# Validate that PROJECT_ID is set to a real value (not placeholder)
+if [ "$PROJECT_ID" = "YOUR_GCP_PROJECT_ID" ]; then
+  echo "❌ Error: PROJECT_ID is not set!"
+  echo "   Please set it as an environment variable:"
+  echo "   export PROJECT_ID=\"your-actual-project-id\""
+  echo "   Or run: PROJECT_ID=\"your-actual-project-id\" ./deploy.sh"
+  exit 1
+fi
+
 # Check for version bump flags
 SKIP_VERSION_BUMP=false
 VERSION_BUMP_TYPE="patch"  # default: patch, options: patch, minor, major
@@ -139,8 +148,8 @@ ensure_artifact_registry_repo() {
   fi
 }
 
-# Ensure variables are exported for envsubst
-export PROJECT_ID REGION REPOSITORY JOB_NAME IMAGE_NAME IMAGE_TAG
+# Ensure variables are exported for envsubst (must be done after validation)
+export PROJECT_ID REGION REPOSITORY
 
 # Check if envsubst is available
 if ! command -v envsubst &> /dev/null; then
@@ -320,8 +329,11 @@ echo ""
 echo "📋 Next steps:"
 if [ "$SKIP_VERSION_BUMP" = false ]; then
   echo "  ⚠️  Don't forget to commit the version changes:"
-  echo "    git add backend/package.json frontend/package.json cloudrun.yaml cloudrun-job-commit-worker.yaml cloudrun-job-user-worker.yaml"
+  echo "    git add backend/package.json frontend/package.json"
   echo "    git commit -m \"chore: bump version to ${BACKEND_VERSION} (backend) and ${FRONTEND_VERSION} (frontend)\""
+  echo ""
+  echo "  ⚠️  Note: Generated YAML files (cloudrun.yaml, cloudrun-job-*.yaml) are ignored by git"
+  echo "     They are generated from templates and should not be committed."
   echo ""
 fi
 echo "Verify versions:"
