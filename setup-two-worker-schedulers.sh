@@ -22,11 +22,11 @@ echo "=========================================================="
 echo ""
 
 # ============================================================
-# 1. Commit Worker Scheduler (Every 5 minutes)
+# 1. Commit Worker Scheduler (Every 10 minutes)
 # ============================================================
 echo "1️⃣  Setting up Commit Worker Scheduler..."
 echo "   Job: ${COMMIT_JOB_NAME}"
-echo "   Schedule: Every 5 minutes (*/5 * * * *)"
+echo "   Schedule: Every 10 minutes (*/10 * * * *)"
 echo ""
 
 if gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} \
@@ -36,7 +36,7 @@ if gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} \
   gcloud scheduler jobs update http ${COMMIT_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="*/5 * * * *" \
+    --schedule="*/10 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
@@ -49,7 +49,7 @@ else
   gcloud scheduler jobs create http ${COMMIT_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="*/5 * * * *" \
+    --schedule="*/10 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
@@ -63,11 +63,11 @@ echo "✅ Commit Worker Scheduler configured!"
 echo ""
 
 # ============================================================
-# 2. User Worker Scheduler (Every 1 minute)
+# 2. User Worker Scheduler (Every 2 hours)
 # ============================================================
 echo "2️⃣  Setting up User Worker Scheduler..."
 echo "   Job: ${USER_JOB_NAME}"
-echo "   Schedule: Every 1 minute (*/1 * * * *)"
+echo "   Schedule: Every 2 hours (0 */2 * * *)"
 echo ""
 
 if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
@@ -77,7 +77,7 @@ if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
   gcloud scheduler jobs update http ${USER_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="*/1 * * * *" \
+    --schedule="0 */2 * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
@@ -90,7 +90,7 @@ else
   gcloud scheduler jobs create http ${USER_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="*/1 * * * *" \
+    --schedule="0 */2 * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
@@ -110,17 +110,17 @@ echo "✅ Both Cloud Schedulers configured successfully!"
 echo ""
 echo "📊 Free Tier Status:"
 echo "   - Using 2 of 3 free scheduler jobs ✅"
-echo "   - Commit Worker: Every 5 minutes (*/5 * * * *)"
-echo "   - User Worker: Every 1 minute (*/1 * * * *)"
+echo "   - Commit Worker: Every 10 minutes (*/10 * * * *)"
+echo "   - User Worker: Every 2 hours (0 */2 * * *)"
 echo ""
-echo "💰 Estimated Monthly Usage (assuming 15s per execution):"
-echo "   - Commit Worker: 8,640 executions/month"
-echo "   - User Worker: 43,200 executions/month (every 1 minute)"
-echo "   - Total: 51,840 executions/month"
-echo "   - vCPU-seconds: ~777,600/month ⚠️  (exceeds 180,000 free tier)"
-echo "   - GB-seconds: ~388,800/month ⚠️  (exceeds 360,000 free tier)"
+echo "💰 Estimated Monthly Usage (assuming 30s commit-worker, 20s user-worker):"
+echo "   - Commit Worker: 4,320 executions/month"
+echo "   - User Worker: 360 executions/month"
+echo "   - Total: 4,680 executions/month"
+echo "   - vCPU-seconds: ~136,800/month ✅ (within 180,000 free tier)"
+echo "   - GB-seconds: ~68,400/month ✅ (within 360,000 free tier)"
 echo ""
-echo "   ⚠️  Note: User Worker running every 1 minute will exceed free tier limits"
+echo "   💰 Estimated Monthly Cost: \$0.00 (FULLY COVERED BY FREE TIER!)"
 echo ""
 echo "🔍 Useful commands:"
 echo ""
