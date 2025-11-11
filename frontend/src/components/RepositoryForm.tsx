@@ -8,7 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { KeyRound, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import {
+  KeyRound,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  Clock,
+  HardDrive,
+  GitBranch,
+} from 'lucide-react';
 import { useRepositoryContext } from '../context/RepositoryContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,11 +36,13 @@ export const RepositoryForm: React.FC = () => {
   const { refreshJobs } = useRepositoryContext();
   const { isAuthenticated } = useAuth();
 
-  // Processing intervals from environment variables with fallbacks
-  const repoProcessingInterval =
-    process.env.NEXT_PUBLIC_REPO_PROCESSING_INTERVAL || '5 minutes';
-  const userProcessingInterval =
-    process.env.NEXT_PUBLIC_USER_PROCESSING_INTERVAL || '4 hours';
+  // Processing intervals - matching actual scheduler configuration
+  const commitProcessingInterval = '10 minutes';
+  const userProcessingInterval = '2 hours';
+
+  // Repository limits - matching backend configuration
+  const maxRepoSizeMB = 250;
+  const maxCommitCount = 2500;
 
   const submitRepository = useMutation({
     mutationFn: async () => {
@@ -99,18 +109,47 @@ export const RepositoryForm: React.FC = () => {
           Enter a repository URL to analyze its contributors and generate a
           leaderboard
         </p>
-        {process.env.NODE_ENV === 'production' && (
-          <Alert className="mt-4 bg-blue-50 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800">
-            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertDescription className="text-sm">
-              <span className="font-semibold">Note:</span> This is an open source
-              project with limited budget. Repositories are processed via a
-              scheduled queue that runs every {repoProcessingInterval}. Users are
-              processed every {userProcessingInterval}. Your repository will be
-              added to the queue and processed during the next scheduled run.
-            </AlertDescription>
-          </Alert>
-        )}
+
+        {/* Limitations Section */}
+        <Alert className="mt-4 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800">
+          <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <AlertDescription className="text-sm space-y-2">
+            <div className="font-semibold mb-2">Service Limitations:</div>
+            <div className="space-y-1.5 pl-1">
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Commits:</strong> Processed every{' '}
+                  {commitProcessingInterval}
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Users:</strong> Processed every{' '}
+                  {userProcessingInterval}
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <HardDrive className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Repository size:</strong> Maximum {maxRepoSizeMB}MB
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <GitBranch className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Commit count:</strong> Maximum{' '}
+                  {maxCommitCount.toLocaleString()} commits
+                </span>
+              </div>
+            </div>
+            <div className="pt-1 text-xs text-amber-800 dark:text-amber-300">
+              Your repository will be added to the queue and processed during
+              the next scheduled run.
+            </div>
+          </AlertDescription>
+        </Alert>
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -186,15 +225,18 @@ export const RepositoryForm: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Your token is only used for this request and won&apos;t be
-                        stored.
+                        Your token is only used for this request and won&apos;t
+                        be stored.
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         Or{' '}
                         <button
                           type="button"
                           onClick={() => {
-                            const backendUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+                            const backendUrl = (
+                              process.env.NEXT_PUBLIC_API_URL ||
+                              'http://localhost:3000'
+                            ).replace(/\/+$/, '');
                             window.location.href = `${backendUrl}/auth/github`;
                           }}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
