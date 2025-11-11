@@ -38,8 +38,7 @@ gcloud scheduler jobs create http ${SCHEDULER_NAME} \
   --schedule="*/2 * * * *" \
   --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
   --http-method=POST \
-  --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-  --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
+  --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
   --time-zone="UTC" \
   --attempt-deadline=600s \
   --max-retry-attempts=0 \

@@ -1,4 +1,4 @@
-import { userQueue, waitForQueueReady } from '../services/queueService';
+import { userQueue, waitForQueueReady, enqueueUserJob } from '../services/queueService';
 import '../workers/user-worker'; // Import to register the processor
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
@@ -36,18 +36,39 @@ async function processUserJobs() {
     }
     if (activeJobs.length > 0) {
       logger.warn(
-        `[USER_WORKER] Found ${activeJobs.length} stuck active job(s), cleaning up...`
+        `[USER_WORKER] Found ${activeJobs.length} stuck active job(s), retrying them...`
       );
       for (const job of activeJobs) {
         try {
+          // For stuck active jobs, we need to re-enqueue them
+          // Get the job data before removing
+          const jobData = job.data;
+          const { repositoryId, emails, token } = jobData;
+          
+          // Remove the stuck job
           await job.remove();
           logger.info(
-            `[USER_WORKER] Removed stuck active job ${job.id} (repository: ${job.data.repositoryId || 'N/A'})`
+            `[USER_WORKER] Removed stuck active job ${job.id} (repository: ${repositoryId || 'N/A'})`
+          );
+          
+          // Re-enqueue the job with the same data
+          await enqueueUserJob(repositoryId, emails, token);
+          logger.info(
+            `[USER_WORKER] Re-enqueued job for repository ${repositoryId} with ${emails.length} emails`
           );
         } catch (error: any) {
           logger.error(
-            `[USER_WORKER] Failed to remove stuck job ${job.id}: ${error.message}`
+            `[USER_WORKER] Failed to retry stuck job ${job.id}: ${error.message}`
           );
+          // If we can't retry, try to remove it to prevent it from blocking forever
+          try {
+            await job.remove();
+            logger.info(`[USER_WORKER] Removed stuck job ${job.id} after retry failure`);
+          } catch (removeError: any) {
+            logger.error(
+              `[USER_WORKER] Failed to remove stuck job ${job.id}: ${removeError.message}`
+            );
+          }
         }
       }
     }

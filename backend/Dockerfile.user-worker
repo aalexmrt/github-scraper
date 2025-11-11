@@ -42,3 +42,4 @@ CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:user-worker"]
 
 
 
+

@@ -39,8 +39,7 @@ if gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} \
     --schedule="*/5 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
     --http-method=POST \
-    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
+    --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
     --attempt-deadline=3600s \
     --max-retry-attempts=0 \
@@ -53,8 +52,7 @@ else
     --schedule="*/5 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
     --http-method=POST \
-    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
+    --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
     --attempt-deadline=3600s \
     --max-retry-attempts=0 \
@@ -65,11 +63,11 @@ echo "✅ Commit Worker Scheduler configured!"
 echo ""
 
 # ============================================================
-# 2. User Worker Scheduler (Every 4 hours)
+# 2. User Worker Scheduler (Every 1 minute)
 # ============================================================
 echo "2️⃣  Setting up User Worker Scheduler..."
 echo "   Job: ${USER_JOB_NAME}"
-echo "   Schedule: Every 4 hours (0 */4 * * *)"
+echo "   Schedule: Every 1 minute (*/1 * * * *)"
 echo ""
 
 if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
@@ -79,11 +77,10 @@ if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
   gcloud scheduler jobs update http ${USER_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="0 */4 * * *" \
+    --schedule="*/1 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
     --http-method=POST \
-    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
+    --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
     --attempt-deadline=3600s \
     --max-retry-attempts=0 \
@@ -93,11 +90,10 @@ else
   gcloud scheduler jobs create http ${USER_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="0 */4 * * *" \
+    --schedule="*/1 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
     --http-method=POST \
-    --oidc-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
-    --oidc-token-audience="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
+    --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
     --attempt-deadline=3600s \
     --max-retry-attempts=0 \
@@ -115,14 +111,16 @@ echo ""
 echo "📊 Free Tier Status:"
 echo "   - Using 2 of 3 free scheduler jobs ✅"
 echo "   - Commit Worker: Every 5 minutes (*/5 * * * *)"
-echo "   - User Worker: Every 4 hours (0 */4 * * *)"
+echo "   - User Worker: Every 1 minute (*/1 * * * *)"
 echo ""
 echo "💰 Estimated Monthly Usage (assuming 15s per execution):"
 echo "   - Commit Worker: 8,640 executions/month"
-echo "   - User Worker: 180 executions/month"
-echo "   - Total: 8,820 executions/month"
-echo "   - vCPU-seconds: ~132,300/month ✅ (within 180,000 free tier)"
-echo "   - GB-seconds: ~66,150/month ✅ (within 360,000 free tier)"
+echo "   - User Worker: 43,200 executions/month (every 1 minute)"
+echo "   - Total: 51,840 executions/month"
+echo "   - vCPU-seconds: ~777,600/month ⚠️  (exceeds 180,000 free tier)"
+echo "   - GB-seconds: ~388,800/month ⚠️  (exceeds 360,000 free tier)"
+echo ""
+echo "   ⚠️  Note: User Worker running every 1 minute will exceed free tier limits"
 echo ""
 echo "🔍 Useful commands:"
 echo ""
