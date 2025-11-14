@@ -119,5 +119,7 @@ echo "   - Manually trigger job:"
 echo "     ./trigger-commit-worker.sh"
 echo ""
 echo "   - Check queue status:"
-echo "     ./diagnose-pending-gcp.sh"
+echo "     cd backend && npm run diagnose-pending"
+
+
 

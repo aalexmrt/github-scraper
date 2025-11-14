@@ -37,8 +37,8 @@ export const RepositoryForm: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   // Processing intervals - matching actual scheduler configuration
-  const commitProcessingInterval = '10 minutes';
-  const userProcessingInterval = '2 hours';
+  const commitProcessingInterval = '15 minutes';
+  const userProcessingInterval = '4 hours';
 
   // Repository limits - matching backend configuration
   const maxRepoSizeMB = 250;

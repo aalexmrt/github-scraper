@@ -163,3 +163,5 @@ echo ""
 echo "   - View scheduler details:"
 echo "     gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} --location=${REGION} --project=${PROJECT_ID}"
 
+
+

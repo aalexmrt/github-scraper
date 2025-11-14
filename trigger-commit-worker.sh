@@ -56,3 +56,5 @@ echo ""
 echo "💡 Check the logs to see if the pending repository was processed:"
 echo "   gcloud logging read \"resource.type=cloud_run_job AND resource.labels.job_name=${COMMIT_JOB_NAME}\" --limit=50 --project=${PROJECT_ID}"
 
+
+

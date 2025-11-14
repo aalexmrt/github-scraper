@@ -1,6 +1,6 @@
 #!/bin/bash
 # Cloud Scheduler setup for Two-Worker Architecture
-# - Commit Worker: Every 5 minutes (processes repos)
+# - Commit Worker: Every 15 minutes (processes repos)
 # - User Worker: Every 4 hours (syncs users via API)
 # Stays within free tier: 2 scheduler jobs (free tier allows 3)
 
@@ -22,11 +22,11 @@ echo "=========================================================="
 echo ""
 
 # ============================================================
-# 1. Commit Worker Scheduler (Every 10 minutes)
+# 1. Commit Worker Scheduler (Every 15 minutes)
 # ============================================================
 echo "1️⃣  Setting up Commit Worker Scheduler..."
 echo "   Job: ${COMMIT_JOB_NAME}"
-echo "   Schedule: Every 10 minutes (*/10 * * * *)"
+echo "   Schedule: Every 15 minutes (*/15 * * * *)"
 echo ""
 
 if gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} \
@@ -36,12 +36,12 @@ if gcloud scheduler jobs describe ${COMMIT_SCHEDULER_NAME} \
   gcloud scheduler jobs update http ${COMMIT_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="*/10 * * * *" \
+    --schedule="*/15 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
-    --attempt-deadline=3600s \
+    --attempt-deadline=1800s \
     --max-retry-attempts=0 \
     --max-retry-duration=0s
 else
@@ -49,12 +49,12 @@ else
   gcloud scheduler jobs create http ${COMMIT_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="*/10 * * * *" \
+    --schedule="*/15 * * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${COMMIT_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
-    --attempt-deadline=3600s \
+    --attempt-deadline=1800s \
     --max-retry-attempts=0 \
     --max-retry-duration=0s
 fi
@@ -63,11 +63,11 @@ echo "✅ Commit Worker Scheduler configured!"
 echo ""
 
 # ============================================================
-# 2. User Worker Scheduler (Every 2 hours)
+# 2. User Worker Scheduler (Every 4 hours)
 # ============================================================
 echo "2️⃣  Setting up User Worker Scheduler..."
 echo "   Job: ${USER_JOB_NAME}"
-echo "   Schedule: Every 2 hours (0 */2 * * *)"
+echo "   Schedule: Every 4 hours (0 */4 * * *)"
 echo ""
 
 if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
@@ -77,12 +77,12 @@ if gcloud scheduler jobs describe ${USER_SCHEDULER_NAME} \
   gcloud scheduler jobs update http ${USER_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="0 */2 * * *" \
+    --schedule="0 */4 * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
-    --attempt-deadline=3600s \
+    --attempt-deadline=1800s \
     --max-retry-attempts=0 \
     --max-retry-duration=0s
 else
@@ -90,12 +90,12 @@ else
   gcloud scheduler jobs create http ${USER_SCHEDULER_NAME} \
     --location=${REGION} \
     --project=${PROJECT_ID} \
-    --schedule="0 */2 * * *" \
+    --schedule="0 */4 * * *" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${USER_JOB_NAME}:run" \
     --http-method=POST \
     --oauth-service-account-email=${SERVICE_ACCOUNT_EMAIL} \
     --time-zone="UTC" \
-    --attempt-deadline=3600s \
+    --attempt-deadline=1800s \
     --max-retry-attempts=0 \
     --max-retry-duration=0s
 fi
@@ -110,15 +110,15 @@ echo "✅ Both Cloud Schedulers configured successfully!"
 echo ""
 echo "📊 Free Tier Status:"
 echo "   - Using 2 of 3 free scheduler jobs ✅"
-echo "   - Commit Worker: Every 10 minutes (*/10 * * * *)"
-echo "   - User Worker: Every 2 hours (0 */2 * * *)"
+echo "   - Commit Worker: Every 15 minutes (*/15 * * * *)"
+echo "   - User Worker: Every 4 hours (0 */4 * * *)"
 echo ""
 echo "💰 Estimated Monthly Usage (assuming 30s commit-worker, 20s user-worker):"
-echo "   - Commit Worker: 4,320 executions/month"
-echo "   - User Worker: 360 executions/month"
-echo "   - Total: 4,680 executions/month"
-echo "   - vCPU-seconds: ~136,800/month ✅ (within 180,000 free tier)"
-echo "   - GB-seconds: ~68,400/month ✅ (within 360,000 free tier)"
+echo "   - Commit Worker: 2,880 executions/month"
+echo "   - User Worker: 180 executions/month"
+echo "   - Total: 3,060 executions/month"
+echo "   - vCPU-seconds: ~86,400/month ✅ (within 180,000 free tier)"
+echo "   - GB-seconds: ~43,200/month ✅ (within 360,000 free tier)"
 echo ""
 echo "   💰 Estimated Monthly Cost: \$0.00 (FULLY COVERED BY FREE TIER!)"
 echo ""
