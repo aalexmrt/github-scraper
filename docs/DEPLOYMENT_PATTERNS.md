@@ -273,13 +273,13 @@ gcloud run services replace cloudrun.yaml \
 
 ```bash
 # Use defaults
-./deploy.sh
+./scripts/deploy/deploy.sh
 
 # Override project ID
-PROJECT_ID=my-other-project ./deploy.sh
+PROJECT_ID=my-other-project ./scripts/deploy/deploy.sh
 
 # Override multiple values
-PROJECT_ID=prod-project REGION=us-west1 ./deploy.sh
+PROJECT_ID=prod-project REGION=us-west1 ./scripts/deploy/deploy.sh
 ```
 
 ---

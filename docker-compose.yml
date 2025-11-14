@@ -5,7 +5,7 @@
 # Current setup:
 # - Backend services run in Docker (via docker-compose.services.yml)
 # - Frontend runs locally (not in Docker)
-# - Use ./start-services.sh to start backend services
+# - Use ./scripts/dev/start-services.sh to start backend services
 
 services:
   backend:

@@ -9,7 +9,7 @@ docker-compose -f docker-compose.services.yml down
 echo ""
 echo "Services stopped!"
 echo ""
-echo "To start services again: ./start-services.sh"
+echo "To start services again: ./scripts/dev/start-services.sh"
 echo "To remove volumes as well: docker-compose -f docker-compose.services.yml down -v"
 
 

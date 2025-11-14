@@ -88,7 +88,7 @@ else
   echo "   ❌ Scheduler does NOT exist!"
   echo ""
   echo "   To create it, run:"
-  echo "   ./setup-two-worker-schedulers.sh"
+  echo "   ./scripts/deploy/setup-two-worker-schedulers.sh"
 fi
 
 echo ""
@@ -132,7 +132,7 @@ else
   echo "   ❌ Scheduler does NOT exist!"
   echo ""
   echo "   To create it, run:"
-  echo "   ./setup-two-worker-schedulers.sh"
+  echo "   ./scripts/deploy/setup-two-worker-schedulers.sh"
 fi
 
 echo ""

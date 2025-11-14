@@ -281,7 +281,7 @@ gcloud run jobs execute user-worker \
 
 ```bash
 # Setup both commit-worker and user-worker schedulers
-./setup-two-worker-schedulers.sh
+./scripts/deploy/setup-two-worker-schedulers.sh
 
 # Or setup individually:
 # Commit worker scheduler (every 5 minutes)
@@ -337,10 +337,10 @@ echo -n "new-value" | gcloud secrets versions add SECRET_NAME \
   --project=YOUR_GCP_PROJECT_ID
 
 # Update OAuth and URL secrets
-./set-oauth-secrets.sh
+./scripts/secrets/set-oauth-secrets.sh
 
 # Update all secrets
-./create-secrets.sh
+./scripts/secrets/create-secrets.sh
 ```
 
 ### After Updating Secrets
@@ -638,7 +638,7 @@ For CI/CD automation, you can set up GitHub Actions or Cloud Build triggers. Qui
 
 ```bash
 # 1. Setup CI/CD service account
-./setup-cicd.sh
+./scripts/deploy/setup-cicd.sh
 
 # 2. Add secrets to GitHub (or setup Cloud Build triggers)
 

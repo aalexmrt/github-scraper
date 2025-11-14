@@ -211,7 +211,7 @@ If you prefer to run only the frontend locally while keeping the backend and ser
    Or use the helper script:
 
    ```bash
-   ./start-services.sh
+   ./scripts/dev/start-services.sh
    ```
 
    This starts:

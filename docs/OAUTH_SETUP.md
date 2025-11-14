@@ -39,7 +39,7 @@ The application now supports GitHub OAuth authentication, allowing users to sign
    - **Authorization callback URL**: `https://your-backend-url.run.app/auth/github/callback` (your Cloud Run backend URL)
 4. Click **"Register application"**
 5. Copy the **Client ID** and generate a **Client Secret**
-6. Save these for GCP Secret Manager (use `create-secrets.sh` script)
+6. Save these for GCP Secret Manager (use `scripts/secrets/create-secrets.sh` script)
 
 ## Step 2: Environment Variables
 
@@ -81,7 +81,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 For production, secrets are stored in **GCP Secret Manager** and configured in `cloudrun.yaml`. Use the `create-secrets.sh` script to set them up:
 
 ```bash
-./create-secrets.sh
+./scripts/secrets/create-secrets.sh
 ```
 
 The script will prompt you for:
@@ -149,7 +149,7 @@ pnpm install
 docker-compose -f docker-compose.services.yml up -d
 
 # Or using the start script
-./start-services.sh
+   ./scripts/dev/start-services.sh
 ```
 
 This will start:
@@ -245,7 +245,7 @@ The frontend will start on **http://localhost:3001**
 1. **Create Production OAuth App** (see Step 1 above)
 2. **Run the secrets setup script:**
    ```bash
-   ./create-secrets.sh
+   ./scripts/secrets/create-secrets.sh
    ```
    This will prompt you for all production secrets including:
    - GitHub OAuth credentials (Production app)
@@ -275,7 +275,7 @@ The `docker-compose.services.yml` file has already been updated with the necessa
 
 1. Create `.env` file in root directory with **Development OAuth App** credentials
 2. Set `FRONTEND_URL=http://localhost:3001` and `BACKEND_URL=http://localhost:3000`
-3. Start backend services: `docker-compose -f docker-compose.services.yml up -d` or `./start-services.sh`
+3. Start backend services: `docker-compose -f docker-compose.services.yml up -d` or `./scripts/dev/start-services.sh`
 4. Run migrations: `docker-compose -f docker-compose.services.yml exec backend npx prisma migrate dev --name add_user_model`
 5. Start frontend locally: `cd frontend && pnpm run dev`
 6. Access frontend at http://localhost:3001

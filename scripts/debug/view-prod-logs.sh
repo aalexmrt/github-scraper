@@ -183,8 +183,8 @@ case "$MODE" in
 esac
 
 echo -e "${BLUE}💡 Tips:${NC}"
-echo "  - Stream logs: ./view-prod-logs.sh [api|commit-worker|user-worker|all] --tail"
-echo "  - View errors only: ./view-prod-logs.sh errors"
+echo "  - Stream logs: ./scripts/debug/view-prod-logs.sh [api|commit-worker|user-worker|all] --tail"
+echo "  - View errors only: ./scripts/debug/view-prod-logs.sh errors"
 echo "  - View in GCP Console: https://console.cloud.google.com/logs/query"
 echo ""
 
