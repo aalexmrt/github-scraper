@@ -57,7 +57,7 @@ RUN chmod +x /app/start.sh
 # Create directory for repos
 RUN mkdir -p /data/repos
 
-EXPOSE 3000
+EXPOSE 8080
 
 # Override entrypoint - Node.js base image has docker-entrypoint.sh which interferes
 # Set explicit entrypoint so Cloud Run executes our script directly
