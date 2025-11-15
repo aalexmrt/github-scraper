@@ -58,6 +58,16 @@ jobs:
             --push \
             ./backend
 
+      - name: Cleanup old images
+        if: success()  # Only run if build succeeded
+        run: |
+          # Cleanup old images (keeps last 3 versions + latest + deployed version)
+          export PROJECT_ID=${{ secrets.PROJECT_ID }}
+          export REGION=${{ secrets.GCP_REGION }}
+          export REPOSITORY=github-scraper
+          ./scripts/utils/cleanup-old-images.sh ${{ steps.extract.outputs.SERVICE }} --execute
+        continue-on-error: true  # Don't fail workflow if cleanup fails
+
       - name: Trigger deployment in infra repo
         run: |
           # Automatically trigger deployment in infra repo (Option C)
