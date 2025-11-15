@@ -1,6 +1,10 @@
 # GitHub Repository Scraper
 
+[![Build](https://github.com/aalexmrt/github-scraper/workflows/Build%20and%20Push%20Images/badge.svg)](https://github.com/aalexmrt/github-scraper/actions)
+
 A scalable, full-stack application that analyzes GitHub repositories by extracting commit history and generating contributor leaderboards. Built with modern technologies featuring asynchronous processing, real-time status updates, and support for both public and private repositories.
+
+> **Deployment**: Images are built here and deployed via [infrastructure repository](https://github.com/aalexmrt/github-scraper-infra)
 
 ## 🎯 Overview
 
@@ -503,10 +507,49 @@ This project is open source and available under the [MIT License](LICENSE).
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## 🚀 Image Building & Deployment
+
+This repository handles **image building** only. Deployment is handled by the [infrastructure repository](https://github.com/aalexmrt/github-scraper-infra).
+
+### Building Images
+
+Images are automatically built and pushed to GCP Artifact Registry when you create a git tag:
+
+```bash
+# Create a service-specific tag
+git tag api-v1.2.3
+git tag commit-worker-v1.5.0
+git tag user-worker-v2.0.1
+
+# Push tags to trigger builds
+git push origin --tags
+```
+
+### Tag Format
+
+- **Format**: `<service>-v<version>`
+- **Services**: `api`, `commit-worker`, `user-worker`
+- **Version**: Semantic versioning (e.g., `1.2.3`)
+
+### Workflow
+
+1. **Tag created** → GitHub Actions workflow triggers
+2. **Image built** → Docker image built from Dockerfile
+3. **Image pushed** → Pushed to Artifact Registry
+4. **Deployment triggered** → Automatically triggers deployment in infra repo
+
+### Dockerfiles
+
+Dockerfiles are located in:
+- `backend/Dockerfile.prod` - API service
+- `backend/Dockerfile.cloudrun-commit-worker` - Commit worker
+- `backend/Dockerfile.cloudrun-user-worker` - User worker
+
 ## 📚 Additional Documentation
 
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Detailed architecture and design patterns
 - [API Documentation](#usage) - Complete API reference
+- [Infrastructure Repository](https://github.com/aalexmrt/github-scraper-infra) - Deployment configurations and scripts
 
 ## 👤 Author
 
