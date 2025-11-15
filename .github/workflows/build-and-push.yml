@@ -1,0 +1,75 @@
+name: Build and Push Images
+
+on:
+  push:
+    tags:
+      - 'api-v*.*.*' # api-v1.2.3
+      - 'commit-worker-v*.*.*' # commit-worker-v1.2.3
+      - 'user-worker-v*.*.*' # user-worker-v1.2.3
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Extract service and version
+        id: extract
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          # Extract service name and version from tag
+          # api-v1.2.3 -> service=api, version=1.2.3
+          if [[ $TAG =~ ^api-v(.+)$ ]]; then
+            echo "SERVICE=api" >> $GITHUB_OUTPUT
+            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "DOCKERFILE=backend/Dockerfile.prod" >> $GITHUB_OUTPUT
+          elif [[ $TAG =~ ^commit-worker-v(.+)$ ]]; then
+            echo "SERVICE=commit-worker" >> $GITHUB_OUTPUT
+            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "DOCKERFILE=backend/Dockerfile.cloudrun-commit-worker" >> $GITHUB_OUTPUT
+          elif [[ $TAG =~ ^user-worker-v(.+)$ ]]; then
+            echo "SERVICE=user-worker" >> $GITHUB_OUTPUT
+            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "DOCKERFILE=backend/Dockerfile.cloudrun-user-worker" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Error: Invalid tag format"
+            exit 1
+          fi
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -f ${{ steps.extract.outputs.DOCKERFILE }} \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }} \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:latest \
+            --push \
+            ./backend
+
+      - name: Trigger deployment in infra repo
+        run: |
+          # Automatically trigger deployment in infra repo (Option C)
+          curl -X POST https://api.github.com/repos/aalexmrt/github-scraper-infra/dispatches \
+            -H "Authorization: token ${{ secrets.DEPLOY_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{
+              "event_type":"deploy",
+              "client_payload":{
+                "service":"${{ steps.extract.outputs.SERVICE }}",
+                "version":"${{ steps.extract.outputs.VERSION }}"
+              }
+            }'
+          echo "✅ Deployment triggered for ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
+
