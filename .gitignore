@@ -58,3 +58,8 @@ coverage/
 cloudrun.yaml
 cloudrun-job.yaml
 cloudrun-job-*.yaml
+
+# GCP Service Account Keys (never commit!)
+github-actions-key.json
+*-key.json
+service-account*.json
