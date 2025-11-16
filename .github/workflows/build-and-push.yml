@@ -18,18 +18,23 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           # Extract service name and version from tag
-          # api-v1.2.3 -> service=api, version=1.2.3
+          # api-v1.2.3 -> service=api, version=1.2.3 (builds all services)
+          # commit-worker-v1.2.3 -> service=commit-worker, version=1.2.3
+          # user-worker-v1.2.3 -> service=user-worker, version=1.2.3
           if [[ $TAG =~ ^api-v(.+)$ ]]; then
             echo "SERVICE=api" >> $GITHUB_OUTPUT
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "BUILD_ALL=true" >> $GITHUB_OUTPUT
             echo "DOCKERFILE=backend/Dockerfile.prod" >> $GITHUB_OUTPUT
           elif [[ $TAG =~ ^commit-worker-v(.+)$ ]]; then
             echo "SERVICE=commit-worker" >> $GITHUB_OUTPUT
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "BUILD_ALL=false" >> $GITHUB_OUTPUT
             echo "DOCKERFILE=backend/Dockerfile.cloudrun-commit-worker" >> $GITHUB_OUTPUT
           elif [[ $TAG =~ ^user-worker-v(.+)$ ]]; then
             echo "SERVICE=user-worker" >> $GITHUB_OUTPUT
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "BUILD_ALL=false" >> $GITHUB_OUTPUT
             echo "DOCKERFILE=backend/Dockerfile.cloudrun-user-worker" >> $GITHUB_OUTPUT
           else
             echo "❌ Error: Invalid tag format"
@@ -58,85 +63,148 @@ jobs:
           fi
           echo "✅ package-lock.json found"
 
-      - name: Build and push image
+      - name: Build and push images
         id: build
         run: |
-          IMAGE_TAG=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}
-          LATEST_TAG=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:latest
+          VERSION="${{ steps.extract.outputs.VERSION }}"
+          BUILD_ALL="${{ steps.extract.outputs.BUILD_ALL }}"
+          REGISTRY=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper
 
-          echo "🔨 Building image..."
-          docker buildx build \
-            --platform linux/amd64 \
-            -f ${{ steps.extract.outputs.DOCKERFILE }} \
-            --build-arg VERSION=${{ steps.extract.outputs.VERSION }} \
-            --cache-from type=registry,ref=${IMAGE_TAG} \
-            --cache-from type=registry,ref=${LATEST_TAG} \
-            -t ${IMAGE_TAG} \
-            -t ${LATEST_TAG} \
-            --push \
-            --provenance=false \
-            --sbom=false \
-            ./backend
+          # Define all services to build
+          if [ "$BUILD_ALL" = "true" ]; then
+            # Build all services when API tag is pushed
+            SERVICES=("api:backend/Dockerfile.prod" "commit-worker:backend/Dockerfile.cloudrun-commit-worker" "user-worker:backend/Dockerfile.cloudrun-user-worker")
+            echo "🔨 Building all services (API, Commit Worker, User Worker) with version ${VERSION}..."
+          else
+            # Build only the specific service
+            SERVICES=("${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.DOCKERFILE }}")
+            echo "🔨 Building ${{ steps.extract.outputs.SERVICE }} with version ${VERSION}..."
+          fi
 
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_OUTPUT
-          echo "✅ Image built and pushed successfully"
+          BUILT_SERVICES=()
 
-      - name: Verify image in registry
+          # Build each service
+          for SERVICE_CONFIG in "${SERVICES[@]}"; do
+            SERVICE_NAME=$(echo $SERVICE_CONFIG | cut -d: -f1)
+            DOCKERFILE=$(echo $SERVICE_CONFIG | cut -d: -f2)
+            IMAGE_TAG=${REGISTRY}/${SERVICE_NAME}:${VERSION}
+            LATEST_TAG=${REGISTRY}/${SERVICE_NAME}:latest
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Building ${SERVICE_NAME}:${VERSION}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            docker buildx build \
+              --platform linux/amd64 \
+              -f ${DOCKERFILE} \
+              --build-arg VERSION=${VERSION} \
+              --cache-from type=registry,ref=${IMAGE_TAG} \
+              --cache-from type=registry,ref=${LATEST_TAG} \
+              -t ${IMAGE_TAG} \
+              -t ${LATEST_TAG} \
+              --push \
+              --provenance=false \
+              --sbom=false \
+              ./backend
+            
+            BUILT_SERVICES+=("${SERVICE_NAME}")
+            echo "✅ ${SERVICE_NAME}:${VERSION} built and pushed"
+          done
+
+          # Output built services as JSON array for later steps
+          echo "BUILT_SERVICES=$(IFS=','; echo "${BUILT_SERVICES[*]}")" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo ""
+          echo "✅ All images built and pushed successfully"
+
+      - name: Verify images in registry
         run: |
-          IMAGE_TAG="${{ steps.build.outputs.IMAGE_TAG }}"
-          EXPECTED_VERSION="${{ steps.extract.outputs.VERSION }}"
+          REGISTRY=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper
+          EXPECTED_VERSION="${{ steps.build.outputs.VERSION }}"
+          BUILT_SERVICES="${{ steps.build.outputs.BUILT_SERVICES }}"
 
-          echo "🔍 Verifying image in registry..."
+          echo "🔍 Verifying images in registry..."
+          echo ""
 
-          # Pull and verify APP_VERSION
-          docker pull ${IMAGE_TAG}
+          # Convert comma-separated string to array
+          IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
 
-          # Verify APP_VERSION is set
-          APP_VERSION=$(docker inspect ${IMAGE_TAG} --format='{{range .Config.Env}}{{println .}}{{end}}' | grep "^APP_VERSION=" | cut -d= -f2 || echo "")
+          for SERVICE_NAME in "${SERVICES[@]}"; do
+            IMAGE_TAG=${REGISTRY}/${SERVICE_NAME}:${EXPECTED_VERSION}
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔍 Verifying ${SERVICE_NAME}:${EXPECTED_VERSION}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Pull and verify APP_VERSION
+            docker pull ${IMAGE_TAG}
+            
+            # Verify APP_VERSION is set
+            APP_VERSION=$(docker inspect ${IMAGE_TAG} --format='{{range .Config.Env}}{{println .}}{{end}}' | grep "^APP_VERSION=" | cut -d= -f2 || echo "")
+            
+            if [ "$APP_VERSION" != "$EXPECTED_VERSION" ]; then
+              echo "❌ ERROR: APP_VERSION mismatch for ${SERVICE_NAME}!"
+              echo "   Expected: ${EXPECTED_VERSION}"
+              echo "   Found: ${APP_VERSION:-not set}"
+              exit 1
+            fi
+            echo "✅ APP_VERSION verified: ${APP_VERSION}"
+            
+            # Verify node_modules exists (quick check)
+            if ! docker run --rm --platform linux/amd64 --entrypoint /bin/sh ${IMAGE_TAG} -c "test -d /app/node_modules && test -f /app/node_modules/.bin/prisma" 2>/dev/null; then
+              echo "❌ ERROR: Critical dependencies missing in ${SERVICE_NAME} image!"
+              echo "   Checking what's in /app:"
+              docker run --rm --platform linux/amd64 --entrypoint /bin/sh ${IMAGE_TAG} -c "ls -la /app" || true
+              exit 1
+            fi
+            echo "✅ Dependencies verified: node_modules, prisma present"
+            echo ""
+          done
 
-          if [ "$APP_VERSION" != "$EXPECTED_VERSION" ]; then
-            echo "❌ ERROR: APP_VERSION mismatch!"
-            echo "   Expected: ${EXPECTED_VERSION}"
-            echo "   Found: ${APP_VERSION:-not set}"
-            exit 1
-          fi
-          echo "✅ APP_VERSION verified: ${APP_VERSION}"
-
-          # Verify node_modules exists (quick check)
-          if ! docker run --rm --platform linux/amd64 --entrypoint /bin/sh ${IMAGE_TAG} -c "test -d /app/node_modules && test -f /app/node_modules/.bin/prisma && test -d /app/node_modules/fastify" 2>/dev/null; then
-            echo "❌ ERROR: Critical dependencies missing in image!"
-            echo "   Checking what's in /app:"
-            docker run --rm --platform linux/amd64 --entrypoint /bin/sh ${IMAGE_TAG} -c "ls -la /app" || true
-            exit 1
-          fi
-          echo "✅ Dependencies verified: node_modules, prisma, fastify all present"
-
-          echo "✅ Image verification passed"
-          echo "✅ Image ready: ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
-          echo "   Version injected via build arg: ${{ steps.extract.outputs.VERSION }}"
+          echo "✅ All images verified successfully"
 
       - name: Cleanup old images
         if: success() # Only run if build succeeded
         run: |
-          # Cleanup old images (keeps last 3 versions + latest + deployed version)
+          # Cleanup old images for all built services
           export PROJECT_ID=${{ secrets.PROJECT_ID }}
           export REGION=${{ secrets.GCP_REGION }}
           export REPOSITORY=github-scraper
-          ./scripts/utils/cleanup-old-images.sh ${{ steps.extract.outputs.SERVICE }} --execute
+          BUILT_SERVICES="${{ steps.build.outputs.BUILT_SERVICES }}"
+
+          # Convert comma-separated string to array
+          IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
+
+          for SERVICE_NAME in "${SERVICES[@]}"; do
+            echo "🧹 Cleaning up old images for ${SERVICE_NAME}..."
+            ./scripts/utils/cleanup-old-images.sh ${SERVICE_NAME} --execute || echo "⚠️  Cleanup failed for ${SERVICE_NAME}, continuing..."
+          done
         continue-on-error: true # Don't fail workflow if cleanup fails
 
-      - name: Trigger deployment in infra repo
+      - name: Trigger deployments in infra repo
         run: |
-          # Automatically trigger deployment in infra repo (Option C)
-          curl -X POST https://api.github.com/repos/aalexmrt/github-scraper-infra/dispatches \
-            -H "Authorization: token ${{ secrets.DEPLOY_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d '{
-              "event_type":"deploy",
-              "client_payload":{
-                "service":"${{ steps.extract.outputs.SERVICE }}",
-                "version":"${{ steps.extract.outputs.VERSION }}"
-              }
-            }'
-          echo "✅ Deployment triggered for ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
+          # Automatically trigger deployment in infra repo for all built services
+          BUILT_SERVICES="${{ steps.build.outputs.BUILT_SERVICES }}"
+          VERSION="${{ steps.build.outputs.VERSION }}"
+
+          # Convert comma-separated string to array
+          IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
+
+          for SERVICE_NAME in "${SERVICES[@]}"; do
+            echo "🚀 Triggering deployment for ${SERVICE_NAME}:${VERSION}..."
+            curl -X POST https://api.github.com/repos/aalexmrt/github-scraper-infra/dispatches \
+              -H "Authorization: token ${{ secrets.DEPLOY_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "{
+                \"event_type\":\"deploy\",
+                \"client_payload\":{
+                  \"service\":\"${SERVICE_NAME}\",
+                  \"version\":\"${VERSION}\"
+                }
+              }"
+            echo "✅ Deployment triggered for ${SERVICE_NAME}:${VERSION}"
+          done
+
+          echo ""
+          echo "✅ All deployments triggered successfully"

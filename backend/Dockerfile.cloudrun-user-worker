@@ -10,7 +10,25 @@ COPY prisma ./prisma/
 COPY tsconfig.json ./
 
 # Install all dependencies (including dev dependencies for building)
-RUN npm ci
+# Verify package-lock.json exists, then retry npm ci up to 3 times on failure
+RUN if [ ! -f package-lock.json ]; then \
+      echo "❌ ERROR: package-lock.json is missing! It must be committed to git."; \
+      echo "   Run: git add backend/package-lock.json && git commit -m 'Add package-lock.json'"; \
+      exit 1; \
+    fi && \
+    for i in 1 2 3; do \
+      if npm ci; then \
+        echo "✅ Dependencies installed successfully (attempt $i)"; \
+        break; \
+      else \
+        echo "⚠️  npm ci failed (attempt $i/3), retrying..."; \
+        if [ $i -eq 3 ]; then \
+          echo "❌ ERROR: npm ci failed after 3 attempts"; \
+          exit 1; \
+        fi; \
+        sleep 10; \
+      fi; \
+    done
 
 # Copy application code
 COPY src ./src
@@ -20,6 +38,11 @@ RUN npx prisma generate && npm run build
 
 # Production stage
 FROM node:22.11.0-alpine
+
+# Accept version as build argument
+ARG VERSION
+# Set as environment variable so it's available at runtime
+ENV APP_VERSION=${VERSION}
 
 WORKDIR /app
 
@@ -31,7 +54,33 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install only production dependencies
-RUN npm ci --only=production
+# Verify package-lock.json exists, then retry npm ci up to 3 times on failure
+RUN if [ ! -f package-lock.json ]; then \
+      echo "❌ ERROR: package-lock.json is missing! It must be committed to git."; \
+      echo "   Run: git add backend/package-lock.json && git commit -m 'Add package-lock.json'"; \
+      exit 1; \
+    fi && \
+    for i in 1 2 3; do \
+      if npm ci --omit=dev; then \
+        echo "✅ Production dependencies installed successfully (attempt $i)"; \
+        break; \
+      else \
+        echo "⚠️  npm ci failed (attempt $i/3), retrying..."; \
+        if [ $i -eq 3 ]; then \
+          echo "❌ ERROR: npm ci failed after 3 attempts"; \
+          exit 1; \
+        fi; \
+        sleep 10; \
+      fi; \
+    done && \
+    # Verify critical dependencies are installed
+    if [ ! -d "node_modules" ] || [ ! -f "node_modules/.bin/prisma" ]; then \
+      echo "❌ ERROR: Critical dependencies missing after installation"; \
+      echo "   node_modules exists: $([ -d node_modules ] && echo yes || echo no)"; \
+      echo "   prisma binary exists: $([ -f node_modules/.bin/prisma ] && echo yes || echo no)"; \
+      exit 1; \
+    fi && \
+    echo "✅ Verified: node_modules and prisma are present"
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
