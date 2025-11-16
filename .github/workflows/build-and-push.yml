@@ -48,17 +48,72 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and push image
+      - name: Verify package-lock.json exists
         run: |
+          if [ ! -f backend/package-lock.json ]; then
+            echo "❌ ERROR: package-lock.json is missing!"
+            echo "   This file is required for reproducible builds."
+            echo "   Please commit it: git add backend/package-lock.json && git commit -m 'Add package-lock.json'"
+            exit 1
+          fi
+          echo "✅ package-lock.json found"
+
+      - name: Build and push image
+        id: build
+        run: |
+          IMAGE_TAG=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}
+          LATEST_TAG=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:latest
+
+          echo "🔨 Building image..."
           docker buildx build \
             --platform linux/amd64 \
             -f ${{ steps.extract.outputs.DOCKERFILE }} \
             --build-arg VERSION=${{ steps.extract.outputs.VERSION }} \
-            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }} \
-            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:latest \
+            --cache-from type=registry,ref=${IMAGE_TAG} \
+            --cache-from type=registry,ref=${LATEST_TAG} \
+            -t ${IMAGE_TAG} \
+            -t ${LATEST_TAG} \
             --push \
+            --provenance=false \
+            --sbom=false \
             ./backend
-          echo "✅ Image built and pushed: ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
+
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "✅ Image built and pushed successfully"
+
+      - name: Verify image in registry
+        run: |
+          IMAGE_TAG="${{ steps.build.outputs.IMAGE_TAG }}"
+          EXPECTED_VERSION="${{ steps.extract.outputs.VERSION }}"
+
+          echo "🔍 Verifying image in registry..."
+
+          # Pull and verify APP_VERSION
+          docker pull ${IMAGE_TAG}
+
+          # Verify APP_VERSION is set
+          APP_VERSION=$(docker inspect ${IMAGE_TAG} --format='{{range .Config.Env}}{{println .}}{{end}}' | grep "^APP_VERSION=" | cut -d= -f2 || echo "")
+
+          if [ "$APP_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "❌ ERROR: APP_VERSION mismatch!"
+            echo "   Expected: ${EXPECTED_VERSION}"
+            echo "   Found: ${APP_VERSION:-not set}"
+            exit 1
+          fi
+          echo "✅ APP_VERSION verified: ${APP_VERSION}"
+
+          # Verify node_modules exists (quick check)
+          if ! docker run --rm --platform linux/amd64 --entrypoint /bin/sh ${IMAGE_TAG} -c "test -d /app/node_modules && test -f /app/node_modules/.bin/prisma && test -d /app/node_modules/fastify" 2>/dev/null; then
+            echo "❌ ERROR: Critical dependencies missing in image!"
+            echo "   Checking what's in /app:"
+            docker run --rm --platform linux/amd64 --entrypoint /bin/sh ${IMAGE_TAG} -c "ls -la /app" || true
+            exit 1
+          fi
+          echo "✅ Dependencies verified: node_modules, prisma, fastify all present"
+
+          echo "✅ Image verification passed"
+          echo "✅ Image ready: ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
           echo "   Version injected via build arg: ${{ steps.extract.outputs.VERSION }}"
 
       - name: Cleanup old images
