@@ -398,3 +398,4 @@ gcloud run jobs describe ${SERVICE} \
 
 **Cost Savings**: Prevents unbounded storage growth, saves ~$0.36-0.96/month as versions accumulate
 
+

@@ -2,10 +2,20 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Get the current version from package.json
+ * Get the current version
+ * Priority:
+ * 1. APP_VERSION environment variable (set during Docker build from git tag)
+ * 2. package.json version (for local development)
+ * 
  * Works in both development (ts-node) and production (compiled) environments
  */
 export function getVersion(): string {
+  // First, check for build-time injected version (from Docker build arg)
+  if (process.env.APP_VERSION) {
+    return process.env.APP_VERSION;
+  }
+
+  // Fallback to package.json (for local development)
   try {
     // Try multiple possible paths for package.json
     // 1. From __dirname (works in compiled code: dist/src/utils -> /app/package.json)

@@ -53,20 +53,23 @@ jobs:
           docker buildx build \
             --platform linux/amd64 \
             -f ${{ steps.extract.outputs.DOCKERFILE }} \
+            --build-arg VERSION=${{ steps.extract.outputs.VERSION }} \
             -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }} \
             -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/github-scraper/${{ steps.extract.outputs.SERVICE }}:latest \
             --push \
             ./backend
+          echo "✅ Image built and pushed: ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
+          echo "   Version injected via build arg: ${{ steps.extract.outputs.VERSION }}"
 
       - name: Cleanup old images
-        if: success()  # Only run if build succeeded
+        if: success() # Only run if build succeeded
         run: |
           # Cleanup old images (keeps last 3 versions + latest + deployed version)
           export PROJECT_ID=${{ secrets.PROJECT_ID }}
           export REGION=${{ secrets.GCP_REGION }}
           export REPOSITORY=github-scraper
           ./scripts/utils/cleanup-old-images.sh ${{ steps.extract.outputs.SERVICE }} --execute
-        continue-on-error: true  # Don't fail workflow if cleanup fails
+        continue-on-error: true # Don't fail workflow if cleanup fails
 
       - name: Trigger deployment in infra repo
         run: |
@@ -82,4 +85,3 @@ jobs:
               }
             }'
           echo "✅ Deployment triggered for ${{ steps.extract.outputs.SERVICE }}:${{ steps.extract.outputs.VERSION }}"
-
