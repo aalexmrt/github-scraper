@@ -17,14 +17,13 @@ scripts/
 
 ### 📦 `deploy/` - Deployment Scripts
 
+⚠️ **Note**: Deployment is now handled by the [infrastructure repository](https://github.com/aalexmrt/github-scraper-infra). These scripts are kept for reference but may be outdated.
+
 Scripts for deploying services and setting up infrastructure:
 
-- **`deploy.sh`** - Main deployment script for all services (API, workers, frontend)
-  - Usage: `./scripts/deploy/deploy.sh [--patch|--minor|--major|--no-bump] [service1] [service2] ...`
-  - Examples:
-    - `./scripts/deploy/deploy.sh` - Deploy all services with patch version bump
-    - `./scripts/deploy/deploy.sh api` - Deploy only API service
-    - `./scripts/deploy/deploy.sh --no-bump commit-worker` - Deploy commit-worker without version bump
+- **`deploy.sh`** - ⚠️ **Legacy**: Main deployment script (deployment now handled in infra repo)
+  - This script is no longer used for production deployments
+  - Deployment is automated via GitHub Actions → infra repo
 
 - **`setup.sh`** - Initial GCP project setup
   - Enables required APIs and prepares project for deployment
@@ -127,15 +126,16 @@ General utility scripts:
 
 ### Deployment
 
+⚠️ **Note**: Production deployment is now automated via GitHub Actions and handled in the [infrastructure repository](https://github.com/aalexmrt/github-scraper-infra).
+
+For local setup and testing:
+
 ```bash
 # Initial setup
 ./scripts/deploy/setup.sh
 
 # Create secrets
 ./scripts/secrets/create-secrets.sh
-
-# Deploy all services
-./scripts/deploy/deploy.sh
 
 # Setup schedulers
 ./scripts/deploy/setup-two-worker-schedulers.sh
