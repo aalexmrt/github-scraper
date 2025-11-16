@@ -13,6 +13,7 @@ log "  NODE_ENV: ${NODE_ENV:-not set}"
 log "  PORT: ${PORT:-not set}"
 log "  DATABASE_URL: ${DATABASE_URL:+set (hidden)}"
 log "  REDIS_HOST: ${REDIS_HOST:-not set}"
+log "  APP_VERSION: ${APP_VERSION:-not set (will use package.json)}"
 
 log "Step 1: Verifying dependencies are installed..."
 # Check for critical dependencies
@@ -43,5 +44,7 @@ fi
 
 log "Step 4: Starting server on port ${PORT:-3000}..."
 log "Server will listen on: 0.0.0.0:${PORT:-3000}"
-exec npm start
+# Run node directly to avoid npm's version output (which shows package.json version)
+# This ensures only our application logs the correct version from APP_VERSION env var
+exec node dist/src/index.js
 
